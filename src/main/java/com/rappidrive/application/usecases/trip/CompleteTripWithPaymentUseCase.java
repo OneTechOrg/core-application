@@ -5,6 +5,7 @@ import com.rappidrive.application.ports.input.payment.CalculateFareInputPort;
 import com.rappidrive.application.ports.input.payment.ProcessPaymentInputPort;
 import com.rappidrive.application.ports.output.DistanceCalculationPort;
 import com.rappidrive.application.ports.output.FareRepositoryPort;
+import com.rappidrive.application.ports.output.PaymentRepositoryPort;
 import com.rappidrive.application.ports.output.TripRepositoryPort;
 import com.rappidrive.domain.entities.Fare;
 import com.rappidrive.domain.entities.Payment;
@@ -28,6 +29,7 @@ public class CompleteTripWithPaymentUseCase implements CompleteTripWithPaymentIn
     
     private final TripRepositoryPort tripRepository;
     private final FareRepositoryPort fareRepository;
+    private final PaymentRepositoryPort paymentRepository;
     private final DistanceCalculationPort distanceCalculation;
     private final CalculateFareInputPort calculateFare;
     private final ProcessPaymentInputPort processPayment;
@@ -36,12 +38,14 @@ public class CompleteTripWithPaymentUseCase implements CompleteTripWithPaymentIn
     public CompleteTripWithPaymentUseCase(
             TripRepositoryPort tripRepository,
             FareRepositoryPort fareRepository,
+            PaymentRepositoryPort paymentRepository,
             DistanceCalculationPort distanceCalculation,
             CalculateFareInputPort calculateFare,
             ProcessPaymentInputPort processPayment,
             TripCompletionService completionService) {
         this.tripRepository = tripRepository;
         this.fareRepository = fareRepository;
+        this.paymentRepository = paymentRepository;
         this.distanceCalculation = distanceCalculation;
         this.calculateFare = calculateFare;
         this.processPayment = processPayment;
@@ -55,7 +59,7 @@ public class CompleteTripWithPaymentUseCase implements CompleteTripWithPaymentIn
         
         completionService.validateCanComplete(trip, command.dropoffLocation());
         
-        // Check if fare already exists (idempotency)
+        // Check if trip was already completed and return previous result (idempotency)
         if (fareRepository.existsByTripId(trip.getId().getValue())) {
             return handleExistingCompletion(trip);
         }
@@ -127,14 +131,13 @@ public class CompleteTripWithPaymentUseCase implements CompleteTripWithPaymentIn
      * Handles case where trip was already completed (idempotency).
      */
     private TripCompletionResult handleExistingCompletion(Trip trip) {
-        // Retrieve existing fare and payment
         Fare fare = fareRepository.findByTripId(trip.getId().getValue())
             .orElseThrow(() -> new IllegalStateException("Fare not found for completed trip"));
-        
-        // For now, return existing completion
-        // In production, might want to retrieve payment as well
-        throw new IllegalStateException(
-            "Trip " + trip.getId() + " has already been completed"
-        );
+        Payment payment = paymentRepository.findByTripId(trip.getId().getValue())
+            .orElseThrow(() -> new IllegalStateException("Payment not found for completed trip"));
+
+        boolean paymentSuccessful = payment.getStatus().name().equals("COMPLETED");
+        String failureReason = paymentSuccessful ? null : payment.getFailureReason();
+        return new TripCompletionResult(trip, fare, payment, paymentSuccessful, failureReason);
     }
 }

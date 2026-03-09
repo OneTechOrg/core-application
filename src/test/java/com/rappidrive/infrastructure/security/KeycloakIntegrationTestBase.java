@@ -23,7 +23,7 @@ import static io.restassured.RestAssured.given;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("e2e")
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 public abstract class KeycloakIntegrationTestBase {
 
     private static final String KEYCLOAK_VERSION = "23.0.3";

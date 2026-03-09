@@ -13,7 +13,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Provides a PostgreSQL container for testing.
  */
 @SpringBootTest
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 @ActiveProfiles("test")
 public abstract class IntegrationTestBase {
 

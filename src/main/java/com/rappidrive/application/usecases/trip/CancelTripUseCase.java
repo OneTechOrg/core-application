@@ -2,33 +2,40 @@ package com.rappidrive.application.usecases.trip;
 
 import com.rappidrive.application.exceptions.TripUnauthorizedException;
 import com.rappidrive.application.ports.input.trip.CancelTripInputPort;
+import com.rappidrive.application.ports.output.DriverRepositoryPort;
 import com.rappidrive.application.ports.output.PaymentGatewayPort;
 import com.rappidrive.application.ports.output.TripRepositoryPort;
+import com.rappidrive.domain.entities.Driver;
 import com.rappidrive.domain.entities.Trip;
-import com.rappidrive.domain.enums.TripStatus;
+import com.rappidrive.domain.enums.DriverStatus;
 import com.rappidrive.domain.exceptions.TripNotFoundException;
+import com.rappidrive.domain.exceptions.DriverNotFoundException;
 import com.rappidrive.domain.services.CancellationPolicyService;
 import com.rappidrive.domain.valueobjects.*;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class CancelTripUseCase implements CancelTripInputPort {
 
     private final TripRepositoryPort tripRepository;
+    private final DriverRepositoryPort driverRepository;
     private final CancellationPolicyService policyService;
     private final PaymentGatewayPort paymentGateway;
 
     public CancelTripUseCase(TripRepositoryPort tripRepository,
+                            DriverRepositoryPort driverRepository,
                             CancellationPolicyService policyService,
                             PaymentGatewayPort paymentGateway) {
         this.tripRepository = tripRepository;
+        this.driverRepository = driverRepository;
         this.policyService = policyService;
         this.paymentGateway = paymentGateway;
     }
 
     @Override
+    @Transactional
     public CancellationResult execute(CancelCommand command) {
         Trip trip = tripRepository.findById(command.tripId())
             .orElseThrow(() -> new TripNotFoundException("Trip not found: " + command.tripId()));
@@ -57,6 +64,7 @@ public class CancelTripUseCase implements CancelTripInputPort {
             }
         }
 
+        reactivateDriverIfAssigned(trip);
         tripRepository.save(trip);
 
         return new CancellationResult(
@@ -81,6 +89,20 @@ public class CancelTripUseCase implements CancelTripInputPort {
             if (driverId == null || !driverId.equals(userId)) {
                 throw new TripUnauthorizedException("Driver can only cancel trips assigned to them");
             }
+        }
+    }
+
+    private void reactivateDriverIfAssigned(Trip trip) {
+        UUID driverId = trip.getDriverId().orElse(null);
+        if (driverId == null) {
+            return;
+        }
+
+        Driver driver = driverRepository.findById(driverId)
+            .orElseThrow(() -> new DriverNotFoundException(driverId));
+        if (driver.getStatus() == DriverStatus.BUSY) {
+            driver.activate();
+            driverRepository.save(driver);
         }
     }
 }

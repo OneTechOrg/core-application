@@ -133,6 +133,7 @@ class AssignDriverToTripUseCaseTest {
 
         TripAlreadyAcceptedException ex = assertThrows(TripAlreadyAcceptedException.class, () -> useCase.execute(cmd));
         assertTrue(ex.getMessage().contains("Esta corrida já foi aceita"));
+        verify(driverRepository, never()).save(any(Driver.class));
     }
 
     @Test

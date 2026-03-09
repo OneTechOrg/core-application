@@ -63,8 +63,7 @@ public class TenantFilterAspect {
                 log.trace("Tenant filter enabled for tenant: {}", tenantId.asString());
             } catch (Exception e) {
                 log.error("Failed to enable tenant filter for tenant: {}", tenantId.asString(), e);
-                // Don't throw - let the query execute without filter to avoid breaking the app
-                // The tenant isolation will still be enforced at application layer
+                throw new IllegalStateException("Unable to enforce tenant isolation filter", e);
             }
         });
     }

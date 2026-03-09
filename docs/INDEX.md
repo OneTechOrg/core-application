@@ -6,6 +6,11 @@
 - Para visão rápida: consulte o resumo em [HIST-2026-012-RESUMO-PT.md](HIST-2026-012-RESUMO-PT.md) e os diagramas em [HIST-2026-012-DIAGRAMS.md](HIST-2026-012-DIAGRAMS.md).
 
 ## [ACTIVE] Documentos vigentes (2026)
+- [HIST-2026-023.md](HIST-2026-023.md)
+- [HIST-2026-022.md](HIST-2026-022.md)
+- [HIST-2026-021.md](HIST-2026-021.md)
+- [HIST-2026-020.md](HIST-2026-020.md)
+- [HIST-2026-019.md](HIST-2026-019.md)
 - [HIST-2026-012.md](HIST-2026-012.md) — referência central do sistema.
 - [HIST-2026-012-ARCHITECTURE.md](HIST-2026-012-ARCHITECTURE.md) — visão detalhada de arquitetura hexagonal.
 - [HIST-2026-012-DIAGRAMS.md](HIST-2026-012-DIAGRAMS.md) — diagramas atualizados.

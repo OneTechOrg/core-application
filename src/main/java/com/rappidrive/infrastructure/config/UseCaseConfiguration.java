@@ -130,6 +130,7 @@ public class UseCaseConfiguration {
     public CompleteTripWithPaymentInputPort completeTripWithPaymentUseCase(
             TripRepositoryPort tripRepository,
             FareRepositoryPort fareRepository,
+            PaymentRepositoryPort paymentRepository,
             DistanceCalculationPort distanceCalculation,
             CalculateFareInputPort calculateFare,
             ProcessPaymentInputPort processPayment,
@@ -137,6 +138,7 @@ public class UseCaseConfiguration {
         return new CompleteTripWithPaymentUseCase(
             tripRepository,
             fareRepository,
+            paymentRepository,
             distanceCalculation,
             calculateFare,
             processPayment,
@@ -159,9 +161,10 @@ public class UseCaseConfiguration {
     @Bean
     public CancelTripInputPort cancelTripUseCase(
             TripRepositoryPort tripRepository,
+            DriverRepositoryPort driverRepository,
             PaymentGatewayPort paymentGateway) {
         CancellationPolicyService policyService = new CancellationPolicyService();
-        return new CancelTripUseCase(tripRepository, policyService, paymentGateway);
+        return new CancelTripUseCase(tripRepository, driverRepository, policyService, paymentGateway);
     }
     
     // Vehicle Use Cases

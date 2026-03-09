@@ -11,7 +11,7 @@ import com.rappidrive.domain.entities.Driver;
 import com.rappidrive.domain.entities.Trip;
 import com.rappidrive.domain.exceptions.DriverNotFoundException;
 import com.rappidrive.domain.exceptions.TripNotFoundException;
-import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,6 +41,7 @@ public class AssignDriverToTripUseCase implements AssignDriverToTripInputPort {
     }
     
     @Override
+    @Transactional
     public Trip execute(AssignDriverCommand command) {
         Trip trip = tripRepository.findById(command.tripId())
             .orElseThrow(() -> new TripNotFoundException(command.tripId()));
@@ -80,12 +81,11 @@ public class AssignDriverToTripUseCase implements AssignDriverToTripInputPort {
             throw new IllegalStateException("Driver is not available for rides");
         }
 
-        trip.assignDriver(new com.rappidrive.domain.valueobjects.DriverId(command.driverId()));
-        driver.markAsBusy();
-        driverRepository.save(driver);
-
         try {
+            trip.assignDriver(new com.rappidrive.domain.valueobjects.DriverId(command.driverId()));
             Trip saved = tripRepository.save(trip);
+            driver.markAsBusy();
+            driverRepository.save(driver);
             eventPublisher.publish(new com.rappidrive.domain.events.TripDriverAssignedEvent(saved.getId(), new com.rappidrive.domain.valueobjects.DriverId(command.driverId())));
             return saved;
         } catch (com.rappidrive.domain.exceptions.TripConcurrencyException e) {

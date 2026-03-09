@@ -52,6 +52,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
         "/v3/api-docs",
         "/swagger-ui",
         "/api-docs",
+        "/api/admin/",
         "/error"
     );
     
