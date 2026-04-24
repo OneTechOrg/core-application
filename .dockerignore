@@ -1,0 +1,14 @@
+target/
+.mvn/
+!target/*.jar
+.git/
+.idea/
+*.iml
+.vscode/
+*.log
+.DS_Store
+README.md
+docs/
+.github/
+docker/
+k8s/

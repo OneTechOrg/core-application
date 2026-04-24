@@ -12,7 +12,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.lang.NonNull;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -34,25 +38,33 @@ import java.util.Set;
  *   <li>Clears context in finally block to prevent leaks</li>
  * </ol>
  * 
- * <p>Future: Validate JWT claim 'tenant_id' matches X-Tenant-ID when authentication is implemented.
+ * <p>If a valid JWT is present in the SecurityContext (Spring Security Order -100 runs first),
+ * the filter also verifies that the JWT {@code tenant_id} claim matches the header value,
+ * returning 403 if they differ.
  */
 @Component
-@Order(1) // Execute before Spring Security filter (typically @Order(5))
+@Order(1) // Spring Security FilterChainProxy runs at Order(-100); this filter sees an already-authenticated context
 @Profile("!test & !e2e")
 public class TenantResolverFilter extends OncePerRequestFilter {
     
     private static final Logger log = LoggerFactory.getLogger(TenantResolverFilter.class);
     private static final String TENANT_HEADER = "X-Tenant-ID";
     
-    // Public endpoints that don't require tenant context
-    private static final Set<String> PUBLIC_ENDPOINTS = Set.of(
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+
+    // Patterns for endpoints that don't require tenant context.
+    // Uses AntPathMatcher so /api/admin/** does not inadvertently match /api/administrators/.
+    private static final Set<String> PUBLIC_ENDPOINT_PATTERNS = Set.of(
         "/actuator/health",
         "/actuator/info",
         "/actuator/prometheus",
         "/v3/api-docs",
+        "/v3/api-docs/**",
         "/swagger-ui",
+        "/swagger-ui/**",
         "/api-docs",
-        "/api/admin/",
+        "/api-docs/**",
+        "/api/admin/**",
         "/error"
     );
     
@@ -113,19 +125,13 @@ public class TenantResolverFilter extends OncePerRequestFilter {
                 return;
             }
             
-            // TODO: Future - Validate JWT claim 'tenant_id' matches X-Tenant-ID
-            // When Spring Security is implemented:
-            // Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            // if (auth != null && auth.isAuthenticated()) {
-            //     String jwtTenantId = extractTenantFromJWT(auth);
-            //     if (!jwtTenantId.equals(tenantId.asString())) {
-            //         log.error("JWT tenant mismatch: JWT={}, Header={}", jwtTenantId, tenantId.asString());
-            //         sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN,
-            //             "Tenant mismatch between JWT and header");
-            //         return;
-            //     }
-            // }
-            
+            // Validate JWT tenant_id claim matches X-Tenant-ID header.
+            // Spring Security (Order -100) runs before this filter (Order 1), so the
+            // SecurityContext is already populated when we reach this point.
+            if (!isJwtTenantConsistent(tenantId, response, method, requestUri)) {
+                return;
+            }
+
             // Set tenant in context for downstream components
             TenantContext.setTenant(tenantId);
             log.debug("Tenant resolved: {} for request: {} {}", 
@@ -142,10 +148,38 @@ public class TenantResolverFilter extends OncePerRequestFilter {
     }
     
     /**
+     * Returns false and writes a 403 response if the authenticated JWT contains a
+     * {@code tenant_id} claim that does not match the resolved tenant header.
+     * Returns true in all other cases (no auth, no claim, or matching claim).
+     */
+    private boolean isJwtTenantConsistent(TenantId resolvedTenantId,
+                                          HttpServletResponse response,
+                                          String method,
+                                          String requestUri) throws IOException {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            return true;
+        }
+        String jwtTenantId = jwtAuth.getToken().getClaimAsString("tenant_id");
+        if (jwtTenantId == null) {
+            return true;
+        }
+        if (!jwtTenantId.equals(resolvedTenantId.asString())) {
+            log.warn("JWT tenant mismatch: jwt={}, header={}, request: {} {}",
+                jwtTenantId, resolvedTenantId.asString(), method, requestUri);
+            sendErrorResponse(response, HttpServletResponse.SC_FORBIDDEN,
+                "Tenant mismatch between JWT and header");
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Checks if the request URI matches any public endpoint pattern.
      */
     private boolean isPublicEndpoint(String requestUri) {
-        return PUBLIC_ENDPOINTS.stream().anyMatch(requestUri::startsWith);
+        return PUBLIC_ENDPOINT_PATTERNS.stream()
+            .anyMatch(pattern -> PATH_MATCHER.match(pattern, requestUri));
     }
     
     /**

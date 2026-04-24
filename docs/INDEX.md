@@ -6,6 +6,8 @@
 - Para visão rápida: consulte o resumo em [HIST-2026-012-RESUMO-PT.md](HIST-2026-012-RESUMO-PT.md) e os diagramas em [HIST-2026-012-DIAGRAMS.md](HIST-2026-012-DIAGRAMS.md).
 
 ## [ACTIVE] Documentos vigentes (2026)
+- [HIST-2026-025.md](HIST-2026-025.md) — Hardening de segurança: tenant isolation e autenticação
+- [HIST-2026-024.md](HIST-2026-024.md)
 - [HIST-2026-023.md](HIST-2026-023.md)
 - [HIST-2026-022.md](HIST-2026-022.md)
 - [HIST-2026-021.md](HIST-2026-021.md)
