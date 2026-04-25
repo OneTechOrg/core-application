@@ -20,6 +20,16 @@ logging:
     root: INFO
     com.rappidrive: INFO
 
+rappidrive:
+  docs:
+    public: false
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 management:
   endpoints:
     web:

@@ -58,6 +58,14 @@ public class ServiceArea {
                 .build();
     }
 
+    // Behavior: Rename service area
+    public ServiceArea rename(String newName) {
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("Service area name cannot be blank");
+        }
+        return new Builder().from(this).name(newName).updatedAt(Instant.now()).build();
+    }
+
     // Behavior: Deactivate service area
     public ServiceArea deactivate() {
         if (!this.active) {

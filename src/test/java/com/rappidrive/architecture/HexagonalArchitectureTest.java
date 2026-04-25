@@ -191,6 +191,10 @@ class HexagonalArchitectureTest {
             .orShould().implement(com.rappidrive.application.ports.input.RejectDriverInputPort.class)
             .orShould().implement(com.rappidrive.application.ports.input.trip.CancelTripInputPort.class)
             .orShould().implement(com.rappidrive.application.ports.input.tenant.OnboardNewTenantInputPort.class)
+            .orShould().implement(com.rappidrive.application.ports.input.servicearea.GetServiceAreaInputPort.class)
+            .orShould().implement(com.rappidrive.application.ports.input.servicearea.ListServiceAreasInputPort.class)
+            .orShould().implement(com.rappidrive.application.ports.input.servicearea.CreateServiceAreaInputPort.class)
+            .orShould().implement(com.rappidrive.application.ports.input.servicearea.ToggleServiceAreaStatusInputPort.class)
             .because("Use cases must implement their input port interfaces")
             .allowEmptyShould(true);
 

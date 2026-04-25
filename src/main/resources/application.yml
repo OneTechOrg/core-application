@@ -57,6 +57,14 @@ logging:
 rappidrive:
   security:
     enabled: true
+  docs:
+    public: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
 
 management:
   endpoints:

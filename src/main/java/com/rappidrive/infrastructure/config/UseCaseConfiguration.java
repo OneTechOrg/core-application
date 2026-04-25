@@ -5,6 +5,7 @@ import com.rappidrive.application.ports.input.notification.*;
 import com.rappidrive.application.ports.input.passenger.*;
 import com.rappidrive.application.ports.input.payment.*;
 import com.rappidrive.application.ports.input.rating.*;
+import com.rappidrive.application.ports.input.servicearea.*;
 import com.rappidrive.application.ports.input.tenant.*;
 import com.rappidrive.application.ports.input.trip.*;
 import com.rappidrive.application.ports.input.vehicle.*;
@@ -20,6 +21,7 @@ import com.rappidrive.application.usecases.notification.*;
 import com.rappidrive.application.usecases.passenger.*;
 import com.rappidrive.application.usecases.payment.*;
 import com.rappidrive.application.usecases.rating.*;
+import com.rappidrive.application.usecases.servicearea.*;
 import com.rappidrive.application.usecases.tenant.*;
 import com.rappidrive.application.usecases.trip.*;
 import com.rappidrive.application.usecases.vehicle.*;
@@ -340,6 +342,28 @@ public class UseCaseConfiguration {
             AdminUserRepositoryPort adminRepository,
             DriverRepositoryPort driverRepository) {
         return new RejectDriverUseCase(approvalRepository, adminRepository, driverRepository);
+    }
+
+    // Service Area Use Cases
+
+    @Bean
+    public GetServiceAreaInputPort getServiceAreaUseCase(ServiceAreaRepositoryPort serviceAreaRepository) {
+        return new GetServiceAreaUseCase(serviceAreaRepository);
+    }
+
+    @Bean
+    public ListServiceAreasInputPort listServiceAreasUseCase(ServiceAreaRepositoryPort serviceAreaRepository) {
+        return new ListServiceAreasUseCase(serviceAreaRepository);
+    }
+
+    @Bean
+    public CreateServiceAreaInputPort createServiceAreaUseCase(ServiceAreaRepositoryPort serviceAreaRepository) {
+        return new CreateServiceAreaUseCase(serviceAreaRepository);
+    }
+
+    @Bean
+    public ToggleServiceAreaStatusInputPort toggleServiceAreaStatusUseCase(ServiceAreaRepositoryPort serviceAreaRepository) {
+        return new ToggleServiceAreaStatusUseCase(serviceAreaRepository);
     }
 
     // Tenant Management Use Cases

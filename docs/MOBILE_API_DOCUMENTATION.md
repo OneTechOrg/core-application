@@ -1,7 +1,7 @@
 # RappiDrive Mobile API Documentation
 
 **Versão da API**: v1  
-**Data**: 14 de janeiro de 2026  
+**Data**: 24 de abril de 2026  
 **Ambiente Base URL**: `https://api.rappidrive.com`  
 **Staging URL**: `https://staging-api.rappidrive.com`  
 **Documentação Swagger**: `/swagger-ui.html`
@@ -42,12 +42,12 @@ RappiDrive é uma plataforma white-label de mobilidade urbana. A API REST fornec
 ### 1.1 Características
 
 - ✅ **RESTful** com JSON
-- ✅ **OAuth 2.0** + JWT para autenticação
+- ✅ **OAuth 2.0** + JWT para autenticação (via Keycloak)
 - ✅ **Multi-tenancy** (suporta múltiplas marcas/empresas)
-- ✅ **WebSockets** para eventos em tempo real
 - ✅ **PostGIS** para buscas geoespaciais
 - ✅ **OpenAPI 3.0** (Swagger)
 - ✅ **HTTPS** obrigatório em produção
+- 🔜 **WebSockets** para eventos em tempo real (planejado)
 
 ### 1.2 Arquitetura do Sistema
 
@@ -87,53 +87,94 @@ RappiDrive é uma plataforma white-label de mobilidade urbana. A API REST fornec
 
 ## 2. Autenticação e Segurança
 
-### 2.1 Fluxo de Autenticação OAuth 2.0
+A autenticação é gerenciada pelo **Keycloak** (servidor OAuth 2.0/OIDC externo ao backend). O app mobile não se comunica diretamente com o backend para login — ele obtém o token JWT do Keycloak e o usa nas chamadas à API.
+
+### 2.1 Fluxo de Autenticação — Authorization Code + PKCE (recomendado para mobile)
+
+O fluxo recomendado para aplicativos iOS e Android é **Authorization Code com PKCE**, que evita o envio de credenciais diretamente pelo app:
 
 ```
-1. App Mobile solicita login:
-   POST /oauth/token
-   {
-     "grant_type": "password",
-     "username": "driver@email.com",
-     "password": "senha123",
-     "tenant_id": "550e8400-e29b-41d4-a716-446655440000"
-   }
+1. App gera code_verifier e code_challenge (SHA-256)
 
-2. Backend retorna token JWT:
+2. App abre o browser/webview para:
+   GET https://auth.rappidrive.com/realms/{realm}/protocol/openid-connect/auth
+     ?client_id=mobile-app
+     &response_type=code
+     &redirect_uri=rappidrive://callback
+     &scope=openid profile
+     &code_challenge={code_challenge}
+     &code_challenge_method=S256
+
+3. Usuário autentica no Keycloak (tela de login gerenciada pelo Keycloak)
+
+4. Keycloak redireciona para:
+   rappidrive://callback?code={authorization_code}
+
+5. App troca o code pelo token:
+   POST https://auth.rappidrive.com/realms/{realm}/protocol/openid-connect/token
+   Content-Type: application/x-www-form-urlencoded
+
+   grant_type=authorization_code
+   &client_id=mobile-app
+   &redirect_uri=rappidrive://callback
+   &code={authorization_code}
+   &code_verifier={code_verifier}
+
+6. Keycloak retorna:
    {
-     "access_token": "eyJhbGciOiJIUzI1NiIsInR...",
+     "access_token": "eyJhbGciOiJSUzI1NiIsInR...",
      "token_type": "Bearer",
-     "expires_in": 3600,
-     "refresh_token": "def502004f1c8b...",
-     "scope": "driver:read driver:write trip:read trip:write"
+     "expires_in": 300,
+     "refresh_token": "eyJhbGciOiJIUzI1NiIsInR...",
+     "refresh_expires_in": 1800,
+     "scope": "openid profile"
    }
 
-3. App Mobile usa token em todas as requests:
-   Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR...
+7. App usa access_token em todas as chamadas à API:
+   Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR...
 ```
+
+O JWT retornado contém o claim `tenant_id`, que o backend usa para resolver o contexto de tenant.
 
 ### 2.2 Refresh Token
 
 ```http
-POST /oauth/token
-Content-Type: application/json
+POST https://auth.rappidrive.com/realms/{realm}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
 
+grant_type=refresh_token
+&client_id=mobile-app
+&refresh_token={refresh_token}
+```
+
+**Resposta**:
+```json
 {
-  "grant_type": "refresh_token",
-  "refresh_token": "def502004f1c8b..."
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR...",
+  "expires_in": 300,
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR...",
+  "refresh_expires_in": 1800
 }
 ```
 
-### 2.3 Logout
+### 2.3 Logout / Revogar Token
 
 ```http
-POST /oauth/revoke
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR...
+POST https://auth.rappidrive.com/realms/{realm}/protocol/openid-connect/logout
+Content-Type: application/x-www-form-urlencoded
+Authorization: Bearer {access_token}
 
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR..."
-}
+client_id=mobile-app
+&refresh_token={refresh_token}
 ```
+
+### 2.4 Discovery Endpoint (metadados OIDC)
+
+```
+GET https://auth.rappidrive.com/realms/{realm}/.well-known/openid-configuration
+```
+
+Retorna todos os endpoints do Keycloak (token, auth, logout, etc.).
 
 ---
 
@@ -145,17 +186,19 @@ Todas as requisições autenticadas devem incluir:
 Authorization: Bearer <JWT_TOKEN>
 Content-Type: application/json
 Accept: application/json
-X-Tenant-Id: <UUID>
+X-Tenant-ID: <UUID>
 X-Request-Id: <UUID>  # Para tracking
 X-Platform: ios | android
 X-App-Version: 1.2.3
 ```
 
+> **Atenção**: O header de tenant é `X-Tenant-ID` (com "ID" em maiúsculas). O backend rejeita com 400 se o header estiver ausente, malformado, ou se o tenant não existir no banco.
+
 **Exemplo**:
 ```http
-GET /api/v1/drivers/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR...
-X-Tenant-Id: 550e8400-e29b-41d4-a716-446655440000
+GET /api/v1/drivers/650e8400-e29b-41d4-a716-446655440001
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR...
+X-Tenant-ID: 550e8400-e29b-41d4-a716-446655440000
 X-Request-Id: 123e4567-e89b-12d3-a456-426614174000
 X-Platform: ios
 X-App-Version: 1.2.3
@@ -247,6 +290,8 @@ POST /api/v1/drivers
 Content-Type: application/json
 ```
 
+> **Nota**: O `tenantId` no body deve corresponder ao valor enviado no header `X-Tenant-ID`. O backend usa o header para isolamento; o campo no body é usado para associação do registro.
+
 **Request Body**:
 ```json
 {
@@ -314,12 +359,7 @@ Authorization: Bearer <TOKEN>
 
 ### 6.3 Buscar Dados do Motorista Atual (Me)
 
-```http
-GET /api/v1/drivers/me
-Authorization: Bearer <TOKEN>
-```
-
-**Response (200 OK)**: Mesmo formato de 6.2
+> **Status**: 🔜 Não implementado. Use `GET /api/v1/drivers/{id}` com o ID extraído do JWT.
 
 ### 6.4 Atualizar Localização do Motorista
 
@@ -332,26 +372,14 @@ Content-Type: application/json
 **Request Body**:
 ```json
 {
-  "latitude": -23.5505,
-  "longitude": -46.6333,
-  "heading": 180.5,
-  "speed": 35.2,
-  "accuracy": 10.5,
-  "timestamp": "2026-01-14T12:35:00Z"
-}
-```
-
-**Response (200 OK)**:
-```json
-{
-  "success": true,
   "location": {
     "latitude": -23.5505,
     "longitude": -46.6333
-  },
-  "updatedAt": "2026-01-14T12:35:00Z"
+  }
 }
 ```
+
+**Response (200 OK)**: Objeto `DriverResponse` completo (mesmo formato de 6.2).
 
 **⚠️ Importante**: Enviar localização a cada 5-10 segundos quando motorista estiver ACTIVE ou em corrida.
 
@@ -362,71 +390,41 @@ PUT /api/v1/drivers/{id}/activate
 Authorization: Bearer <TOKEN>
 ```
 
-**Response (200 OK)**:
-```json
-{
-  "id": "650e8400-e29b-41d4-a716-446655440001",
-  "status": "ACTIVE",
-  "message": "Driver is now available for trips"
-}
-```
+**Response (200 OK)**: Objeto `DriverResponse` completo (mesmo formato de 6.2) com `status: "ACTIVE"`.
 
 ### 6.6 Desativar Motorista (Offline)
 
-```http
-PUT /api/v1/drivers/{id}/deactivate
-Authorization: Bearer <TOKEN>
-```
-
-**Response (200 OK)**:
-```json
-{
-  "id": "650e8400-e29b-41d4-a716-446655440001",
-  "status": "INACTIVE",
-  "message": "Driver is now offline"
-}
-```
+> **Status**: 🔜 Não implementado. Para colocar o motorista offline, interrompa o envio de localização. Um mecanismo de timeout/desativação automática está planejado.
 
 ### 6.7 Buscar Motoristas Disponíveis (Próximos)
 
 ```http
-GET /api/v1/drivers/available?latitude=-23.5505&longitude=-46.6333&radius=5
+GET /api/v1/drivers/nearby?tenantId={tenantId}&latitude=-23.5505&longitude=-46.6333&radiusKm=5
 Authorization: Bearer <TOKEN>
 ```
 
 **Query Parameters**:
+- `tenantId` (required): UUID do tenant
 - `latitude` (required): Latitude do ponto de partida
 - `longitude` (required): Longitude do ponto de partida
-- `radius` (optional, default: 5): Raio de busca em km
+- `radiusKm` (optional, default: 5.0): Raio de busca em km
 
 **Response (200 OK)**:
 ```json
-{
-  "drivers": [
-    {
-      "id": "650e8400-e29b-41d4-a716-446655440001",
-      "fullName": "João Silva",
-      "currentLocation": {
-        "latitude": -23.5505,
-        "longitude": -46.6333
-      },
-      "distanceKm": 1.2,
-      "rating": {
-        "average": 4.8,
-        "count": 1523
-      },
-      "vehicle": {
-        "brand": "Toyota",
-        "model": "Corolla",
-        "color": "Preto",
-        "licensePlate": "ABC-1234"
-      },
-      "estimatedArrivalMinutes": 3
+[
+  {
+    "id": "650e8400-e29b-41d4-a716-446655440001",
+    "fullName": "João Silva",
+    "currentLocation": {
+      "latitude": -23.5505,
+      "longitude": -46.6333
+    },
+    "rating": {
+      "average": 4.8,
+      "count": 1523
     }
-  ],
-  "total": 15,
-  "averageDistanceKm": 2.5
-}
+  }
+]
 ```
 
 ---
@@ -479,44 +477,11 @@ Authorization: Bearer <TOKEN>
 
 ### 7.3 Buscar Dados do Passageiro Atual (Me)
 
-```http
-GET /api/v1/passengers/me
-Authorization: Bearer <TOKEN>
-```
-
-**Response (200 OK)**: Mesmo formato de 7.1
+> **Status**: 🔜 Não implementado. Use `GET /api/v1/passengers/{id}` com o ID extraído do JWT.
 
 ### 7.4 Atualizar Perfil do Passageiro
 
-```http
-PUT /api/v1/passengers/{id}
-Authorization: Bearer <TOKEN>
-Content-Type: application/json
-```
-
-**Request Body**:
-```json
-{
-  "fullName": "Maria Silva Santos",
-  "phone": "+5511988888888",
-  "favoriteAddresses": [
-    {
-      "label": "Casa",
-      "address": "Rua das Flores, 123",
-      "latitude": -23.5505,
-      "longitude": -46.6333
-    },
-    {
-      "label": "Trabalho",
-      "address": "Av. Paulista, 1000",
-      "latitude": -23.5505,
-      "longitude": -46.6555
-    }
-  ]
-}
-```
-
-**Response (200 OK)**: Passageiro atualizado
+> **Status**: 🔜 Não implementado.
 
 ---
 
@@ -638,7 +603,7 @@ Authorization: Bearer <TOKEN>
 ### 8.3 Atribuir Motorista à Corrida
 
 ```http
-POST /api/v1/trips/{id}/assign
+PUT /api/v1/trips/{id}/assign-driver
 Authorization: Bearer <TOKEN>
 Content-Type: application/json
 ```
@@ -650,36 +615,18 @@ Content-Type: application/json
 }
 ```
 
-**Response (200 OK)**:
-```json
-{
-  "id": "850e8400-e29b-41d4-a716-446655440003",
-  "status": "DRIVER_ASSIGNED",
-  "driver": {
-    "id": "650e8400-e29b-41d4-a716-446655440001",
-    "fullName": "João Silva"
-  },
-  "assignedAt": "2026-01-14T12:42:00Z"
-}
-```
+**Response (200 OK)**: Objeto `TripResponse` completo (mesmo formato de 8.2) com `status: "DRIVER_ASSIGNED"`.
 
 ### 8.4 Iniciar Corrida
 
 ```http
-POST /api/v1/trips/{id}/start
+PUT /api/v1/trips/{id}/start
 Authorization: Bearer <TOKEN>
 ```
 
-**Response (200 OK)**:
-```json
-{
-  "id": "850e8400-e29b-41d4-a716-446655440003",
-  "status": "IN_PROGRESS",
-  "startedAt": "2026-01-14T12:45:00Z"
-}
-```
+**Response (200 OK)**: Objeto `TripResponse` completo com `status: "IN_PROGRESS"`.
 
-### 8.5 Completar Corrida
+### 8.5 Completar Corrida com Pagamento
 
 ```http
 POST /api/v1/trips/{id}/complete-with-payment
@@ -721,6 +668,15 @@ Content-Type: application/json
   }
 }
 ```
+
+### 8.5.1 Buscar Detalhes de Pagamento da Corrida
+
+```http
+GET /api/v1/trips/{id}/payment-details
+Authorization: Bearer <TOKEN>
+```
+
+**Response (200 OK)**: Mesmo formato de 8.5.
 
 ### 8.6 Cancelar Corrida
 
@@ -769,40 +725,11 @@ Content-Type: application/json
 
 ### 8.7 Listar Corridas do Passageiro
 
-```http
-GET /api/v1/passengers/{passengerId}/trips?status=COMPLETED&page=0&size=20
-Authorization: Bearer <TOKEN>
-```
-
-**Response (200 OK)**:
-```json
-{
-  "content": [
-    {
-      "id": "850e8400-e29b-41d4-a716-446655440003",
-      "status": "COMPLETED",
-      "origin": "Rua das Flores, 123",
-      "destination": "Av. Paulista, 1000",
-      "fare": 22.00,
-      "distanceKm": 5.8,
-      "completedAt": "2026-01-14T13:00:00Z"
-    }
-  ],
-  "page": 0,
-  "size": 20,
-  "totalElements": 45,
-  "totalPages": 3
-}
-```
+> **Status**: 🔜 Não implementado.
 
 ### 8.8 Listar Corridas do Motorista
 
-```http
-GET /api/v1/drivers/{driverId}/trips?status=COMPLETED&page=0&size=20
-Authorization: Bearer <TOKEN>
-```
-
-**Response (200 OK)**: Mesmo formato de 8.7
+> **Status**: 🔜 Não implementado.
 
 ---
 
@@ -859,27 +786,51 @@ Authorization: Bearer <TOKEN>
 ### 9.3 Listar Veículos do Motorista
 
 ```http
-GET /api/v1/drivers/{driverId}/vehicles
+GET /api/v1/vehicles/driver/{driverId}
 Authorization: Bearer <TOKEN>
 ```
 
 **Response (200 OK)**:
 ```json
-{
-  "vehicles": [
-    {
-      "id": "b50e8400-e29b-41d4-a716-446655440006",
-      "licensePlate": "ABC-1234",
-      "brand": "Toyota",
-      "model": "Corolla",
-      "year": 2023,
-      "color": "Preto",
-      "status": "ACTIVE"
-    }
-  ],
-  "total": 1
-}
+[
+  {
+    "id": "b50e8400-e29b-41d4-a716-446655440006",
+    "licensePlate": "ABC-1234",
+    "brand": "Toyota",
+    "model": "Corolla",
+    "year": 2023,
+    "color": "Preto",
+    "vehicleType": "STANDARD",
+    "status": "ACTIVE"
+  }
+]
 ```
+
+### 9.4 Buscar Veículo Ativo do Motorista
+
+```http
+GET /api/v1/vehicles/driver/{driverId}/active
+Authorization: Bearer <TOKEN>
+```
+
+**Response (200 OK)**: Objeto `VehicleResponse` do veículo atualmente ativo.
+
+### 9.5 Atualizar Veículo
+
+```http
+PUT /api/v1/vehicles/{id}
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+```
+
+### 9.6 Ativar Veículo
+
+```http
+PUT /api/v1/vehicles/{id}/activate
+Authorization: Bearer <TOKEN>
+```
+
+**Response (200 OK)**: Objeto `VehicleResponse` com `status: "ACTIVE"`.
 
 ---
 
@@ -919,7 +870,25 @@ Content-Type: application/json
 }
 ```
 
-### 10.2 Solicitar Reembolso
+### 10.2 Buscar Pagamento por ID
+
+```http
+GET /api/v1/payments/{id}
+Authorization: Bearer <TOKEN>
+```
+
+**Response (200 OK)**: Objeto `PaymentResponse` (mesmo formato de 10.1).
+
+### 10.3 Buscar Pagamento por Corrida
+
+```http
+GET /api/v1/payments/trip/{tripId}
+Authorization: Bearer <TOKEN>
+```
+
+**Response (200 OK)**: Objeto `PaymentResponse`.
+
+### 10.4 Solicitar Reembolso
 
 ```http
 POST /api/v1/payments/refund
@@ -936,16 +905,7 @@ Content-Type: application/json
 }
 ```
 
-**Response (200 OK)**:
-```json
-{
-  "id": "c50e8400-e29b-41d4-a716-446655440007",
-  "paymentId": "a50e8400-e29b-41d4-a716-446655440005",
-  "amount": 22.00,
-  "status": "REFUNDED",
-  "refundedAt": "2026-01-14T13:05:00Z"
-}
-```
+**Response (200 OK)**: Objeto `PaymentResponse` com `status: "REFUNDED"`.
 
 ---
 
@@ -991,10 +951,10 @@ Content-Type: application/json
 - Positivas: `POLITE`, `SAFE_DRIVER`, `CLEAN_CAR`, `GOOD_CONVERSATION`, `ON_TIME`
 - Negativas: `RUDE`, `UNSAFE_DRIVING`, `DIRTY_CAR`, `LATE`, `WRONG_ROUTE`
 
-### 11.2 Buscar Avaliações do Motorista
+### 11.2 Resumo de Avaliações do Motorista
 
 ```http
-GET /api/v1/drivers/{driverId}/ratings?page=0&size=20
+GET /api/v1/ratings/drivers/{driverId}/summary
 Authorization: Bearer <TOKEN>
 ```
 
@@ -1002,19 +962,34 @@ Authorization: Bearer <TOKEN>
 ```json
 {
   "averageScore": 4.8,
-  "totalRatings": 1523,
-  "ratings": [
-    {
-      "id": "d50e8400-e29b-41d4-a716-446655440008",
-      "score": 5,
-      "comment": "Excelente motorista!",
-      "createdAt": "2026-01-14T13:10:00Z"
-    }
-  ],
-  "page": 0,
-  "size": 20,
-  "totalPages": 77
+  "totalRatings": 1523
 }
+```
+
+### 11.3 Avaliação do Passageiro
+
+```http
+GET /api/v1/ratings/passengers/{passengerId}
+Authorization: Bearer <TOKEN>
+```
+
+**Response (200 OK)**: Objeto com informações de rating do passageiro.
+
+### 11.4 Avaliações de uma Corrida
+
+```http
+GET /api/v1/ratings/trips/{tripId}
+Authorization: Bearer <TOKEN>
+```
+
+**Response (200 OK)**: Objeto com as avaliações da corrida (passageiro → motorista e motorista → passageiro).
+
+### 11.5 Reportar Avaliação
+
+```http
+POST /api/v1/ratings/{ratingId}/report
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
 ```
 
 ---
@@ -1030,89 +1005,76 @@ Authorization: Bearer <TOKEN>
 
 **Response (200 OK)**:
 ```json
-{
-  "notifications": [
-    {
-      "id": "e50e8400-e29b-41d4-a716-446655440009",
-      "type": "TRIP_ASSIGNED",
-      "title": "Nova corrida disponível!",
-      "message": "Passageiro Maria Silva solicitou uma corrida próxima a você.",
-      "data": {
-        "tripId": "850e8400-e29b-41d4-a716-446655440003",
-        "passengerId": "750e8400-e29b-41d4-a716-446655440002"
-      },
-      "read": false,
-      "createdAt": "2026-01-14T12:40:30Z"
-    }
-  ],
-  "unreadCount": 3,
-  "total": 15
-}
+[
+  {
+    "id": "e50e8400-e29b-41d4-a716-446655440009",
+    "type": "TRIP_ASSIGNED",
+    "title": "Nova corrida disponível!",
+    "message": "Passageiro Maria Silva solicitou uma corrida próxima a você.",
+    "data": {
+      "tripId": "850e8400-e29b-41d4-a716-446655440003",
+      "passengerId": "750e8400-e29b-41d4-a716-446655440002"
+    },
+    "read": false,
+    "createdAt": "2026-01-14T12:40:30Z"
+  }
+]
 ```
 
-### 12.2 Marcar Notificação como Lida
+### 12.2 Contagem de Não Lidas
 
 ```http
-PUT /api/v1/notifications/{id}/read
+GET /api/v1/notifications/unread-count
 Authorization: Bearer <TOKEN>
 ```
 
 **Response (200 OK)**:
 ```json
 {
-  "id": "e50e8400-e29b-41d4-a716-446655440009",
-  "read": true,
-  "readAt": "2026-01-14T12:45:00Z"
+  "unreadCount": 3
 }
 ```
 
-### 12.3 Registrar Token de Push Notification
+### 12.3 Marcar Notificação como Lida
 
 ```http
-POST /api/v1/notifications/register-token
+PATCH /api/v1/notifications/{id}/read
 Authorization: Bearer <TOKEN>
-Content-Type: application/json
 ```
 
-**Request Body**:
-```json
-{
-  "userId": "650e8400-e29b-41d4-a716-446655440001",
-  "platform": "IOS",
-  "token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
-}
-```
+**Response (204 No Content)**
 
-**Response (200 OK)**:
-```json
-{
-  "success": true,
-  "message": "Push notification token registered successfully"
-}
-```
+### 12.4 Registrar Token de Push Notification
+
+> **Status**: 🔜 Não implementado. O endpoint `POST /api/v1/notifications` existente é para envio de notificações (uso interno/admin), não para registro de tokens de dispositivo.
 
 ---
 
 ## 13. WebSockets e Eventos em Tempo Real
 
-### 13.1 Conectar ao WebSocket
+> **Status**: 🔜 Planejado — não disponível na v1 atual.
+>
+> O backend v1 não possui suporte a WebSockets. Eventos em tempo real (localização do motorista, mudança de status da corrida) devem ser obtidos via **polling** nos endpoints REST até a implementação do WebSocket.
+>
+> A especificação de eventos abaixo representa o contrato planejado para a v2.
+
+### 13.1 Conectar ao WebSocket (planejado)
 
 ```javascript
 // URL: wss://api.rappidrive.com/ws
 const socket = new WebSocket('wss://api.rappidrive.com/ws');
 
 socket.onopen = () => {
-  // Autenticar
   socket.send(JSON.stringify({
     type: 'AUTH',
-    token: 'Bearer eyJhbGciOiJIUzI1NiIsInR...',
+    token: 'Bearer eyJhbGciOiJSUzI1NiIsInR...',
     userId: '650e8400-e29b-41d4-a716-446655440001',
     userType: 'DRIVER'
   }));
 };
 ```
 
-### 13.2 Eventos para Motorista
+### 13.2 Eventos para Motorista (planejado)
 
 **13.2.1 Nova Corrida Disponível**
 ```json
@@ -1153,7 +1115,7 @@ socket.onopen = () => {
 }
 ```
 
-### 13.3 Eventos para Passageiro
+### 13.3 Eventos para Passageiro (planejado)
 
 **13.3.1 Motorista Atribuído**
 ```json
@@ -1283,40 +1245,11 @@ Content-Type: application/json
 
 ### 14.2 Buscar Endereço por Coordenadas (Reverse Geocoding)
 
-```http
-GET /api/v1/geocoding/reverse?latitude=-23.5505&longitude=-46.6333
-Authorization: Bearer <TOKEN>
-```
-
-**Response (200 OK)**:
-```json
-{
-  "address": "Rua das Flores, 123",
-  "neighborhood": "Jardins",
-  "city": "São Paulo",
-  "state": "SP",
-  "country": "Brasil",
-  "postalCode": "01452-000",
-  "formattedAddress": "Rua das Flores, 123 - Jardins, São Paulo - SP, 01452-000"
-}
-```
+> **Status**: 🔜 Planejado — não disponível na v1 atual. Implemente no lado cliente usando o SDK MapBox diretamente.
 
 ### 14.3 Buscar Coordenadas por Endereço (Geocoding)
 
-```http
-GET /api/v1/geocoding/forward?address=Av.%20Paulista,%201000,%20São%20Paulo
-Authorization: Bearer <TOKEN>
-```
-
-**Response (200 OK)**:
-```json
-{
-  "latitude": -23.5605,
-  "longitude": -46.6555,
-  "address": "Av. Paulista, 1000",
-  "confidence": 0.95
-}
-```
+> **Status**: 🔜 Planejado — não disponível na v1 atual. Implemente no lado cliente usando o SDK MapBox diretamente.
 
 ---
 
@@ -1325,64 +1258,68 @@ Authorization: Bearer <TOKEN>
 ### 15.1 Fluxo Completo - Passageiro
 
 ```
-1. Passageiro abre app → GET /passengers/me
-2. Passageiro seleciona origem e destino → POST /fares/calculate
-3. Passageiro confirma → POST /trips (status: REQUESTED)
-4. WebSocket: Aguardando motorista...
-5. WebSocket recebe: DRIVER_ASSIGNED
-6. App exibe: Motorista João chegando em 5 min
-7. WebSocket recebe: DRIVER_LOCATION_UPDATE (a cada 5s)
-8. App atualiza mapa com localização do motorista
-9. WebSocket recebe: DRIVER_ARRIVED
-10. App mostra: "Motorista chegou!"
-11. WebSocket recebe: TRIP_STARTED
-12. App entra em modo "Em viagem"
-13. WebSocket recebe: TRIP_COMPLETED
-14. App exibe resumo da corrida e solicita pagamento
-15. Passageiro confirma → POST /trips/{id}/complete-with-payment
-16. App solicita avaliação → POST /ratings
-17. Fim
+1.  Passageiro abre app → GET /api/v1/passengers/{id}
+2.  Passageiro seleciona origem e destino → POST /api/v1/fares/calculate
+3.  Passageiro confirma → POST /api/v1/trips (status: REQUESTED)
+4.  [v1] App faz polling em GET /api/v1/trips/{id} aguardando motorista
+    [v2] WebSocket: aguardando evento DRIVER_ASSIGNED
+5.  App exibe: Motorista João chegando em 5 min
+6.  [v1] App faz polling em GET /api/v1/trips/{id} e GET /api/v1/drivers/{driverId} para atualizar posição
+    [v2] WebSocket: eventos DRIVER_LOCATION_UPDATE (a cada 5s)
+7.  App atualiza mapa com localização do motorista
+8.  [v1] Polling detecta status DRIVER_ARRIVED
+    [v2] WebSocket recebe: DRIVER_ARRIVED
+9.  App mostra: "Motorista chegou!"
+10. [v1] Polling detecta status IN_PROGRESS
+    [v2] WebSocket recebe: TRIP_STARTED
+11. App entra em modo "Em viagem"
+12. [v1] Polling detecta status COMPLETED
+    [v2] WebSocket recebe: TRIP_COMPLETED
+13. App exibe resumo da corrida e solicita pagamento
+14. Passageiro confirma → POST /api/v1/trips/{id}/complete-with-payment
+15. App solicita avaliação → POST /api/v1/ratings
+16. Fim
 ```
 
 ### 15.2 Fluxo Completo - Motorista
 
 ```
-1. Motorista abre app → GET /drivers/me
-2. Motorista clica "Ficar Online" → PUT /drivers/{id}/activate
-3. App inicia envio de localização → PUT /drivers/{id}/location (a cada 5s)
-4. WebSocket recebe: TRIP_REQUEST
-5. App exibe: "Nova corrida! Aceitar?"
-6. Motorista aceita → POST /trips/{id}/assign
-7. App entra em modo "Indo buscar passageiro"
-8. Motorista chega → App detecta proximidade (Geofence)
-9. App envia: POST /trips/{id}/notify-arrival
-10. WebSocket envia para passageiro: DRIVER_ARRIVED
-11. Motorista clica "Iniciar" → POST /trips/{id}/start
-12. App entra em modo "Em viagem"
-13. Motorista segue rota até destino
-14. Motorista clica "Finalizar" → POST /trips/{id}/complete-with-payment
-15. App exibe: "Corrida concluída! R$ 22,00"
-16. App solicita avaliação → POST /ratings
-17. Motorista fica disponível novamente
-18. Fim
+1.  Motorista abre app → GET /api/v1/drivers/{id}
+2.  Motorista clica "Ficar Online" → PUT /api/v1/drivers/{id}/activate
+3.  App inicia envio de localização → PUT /api/v1/drivers/{id}/location (a cada 5-10s)
+4.  [v1] App faz polling aguardando corrida atribuída
+    [v2] WebSocket recebe: TRIP_REQUEST
+5.  App exibe: "Nova corrida! Aceitar?"
+6.  Motorista aceita → PUT /api/v1/trips/{id}/assign-driver
+7.  App entra em modo "Indo buscar passageiro"
+8.  Motorista chega → App detecta proximidade (Geofence no cliente)
+9.  [v2] App envia: POST /api/v1/trips/{id}/notify-arrival (planejado)
+10. Motorista clica "Iniciar" → PUT /api/v1/trips/{id}/start
+11. App entra em modo "Em viagem"
+12. Motorista segue rota até destino
+13. Motorista clica "Finalizar" → POST /api/v1/trips/{id}/complete-with-payment
+14. App exibe: "Corrida concluída! R$ 22,00"
+15. App solicita avaliação → POST /api/v1/ratings
+16. Motorista fica disponível novamente
+17. Fim
 ```
 
 ### 15.3 Fluxo de Cancelamento
 
 **Por Passageiro**:
 ```
-1. Passageiro cancela → POST /trips/{id}/cancel
+1. Passageiro cancela → POST /api/v1/trips/{id}/cancel
 2. Backend calcula tarifa (se aplicável)
 3. Backend processa pagamento da taxa
-4. WebSocket notifica motorista: TRIP_CANCELLED
+4. [v2] WebSocket notifica motorista: TRIP_CANCELLED
 5. Motorista fica disponível novamente
 ```
 
 **Por Motorista**:
 ```
-1. Motorista cancela → POST /trips/{id}/cancel
+1. Motorista cancela → POST /api/v1/trips/{id}/cancel
 2. Backend registra cancelamento (sem taxa para motorista)
-3. WebSocket notifica passageiro: TRIP_CANCELLED
+3. [v2] WebSocket notifica passageiro: TRIP_CANCELLED
 4. Passageiro pode solicitar nova corrida
 ```
 
@@ -1391,6 +1328,15 @@ Authorization: Bearer <TOKEN>
 ## 16. Tratamento de Erros
 
 ### 16.1 Erros Comuns
+
+**400 Bad Request** - Header de tenant ausente ou inválido
+```json
+{
+  "error": "Missing required header: X-Tenant-ID",
+  "status": 400,
+  "timestamp": "2026-01-14T12:30:45Z"
+}
+```
 
 **401 Unauthorized** - Token inválido ou expirado
 ```json
@@ -1403,7 +1349,7 @@ Authorization: Bearer <TOKEN>
 }
 ```
 
-**Ação**: Fazer refresh do token ou solicitar novo login.
+**Ação**: Fazer refresh do token via Keycloak.
 
 **404 Not Found** - Recurso não encontrado
 ```json
@@ -1445,7 +1391,7 @@ Authorization: Bearer <TOKEN>
 
 ## 17. Paginação
 
-Todos os endpoints que retornam listas suportam paginação:
+Endpoints de listagem que suportam paginação:
 
 ```http
 GET /api/v1/passengers/{passengerId}/trips?page=0&size=20&sort=createdAt,desc
@@ -1459,7 +1405,7 @@ GET /api/v1/passengers/{passengerId}/trips?page=0&size=20&sort=createdAt,desc
 **Response**:
 ```json
 {
-  "content": [...],
+  "content": [],
   "page": 0,
   "size": 20,
   "totalElements": 145,
@@ -1537,7 +1483,6 @@ CVV: 123
 
 ### 20.2 Ferramentas Recomendadas
 
-- **Postman Collection**: [Download aqui](https://api.rappidrive.com/postman-collection.json)
 - **Swagger UI**: https://staging-api.rappidrive.com/swagger-ui.html
 - **Health Check**: https://staging-api.rappidrive.com/actuator/health
 
@@ -1601,7 +1546,32 @@ func shouldSendLocationUpdate(_ newLocation: CLLocation) -> Bool {
 }
 ```
 
-### 21.4 Handling de WebSocket Reconnection
+### 21.4 Polling Enquanto WebSocket Não Está Disponível
+
+```swift
+// Enquanto WebSocket (v2) não está disponível, use polling com backoff
+class TripStatusPoller {
+    var tripId: String
+    var intervalSeconds: Double = 3.0
+    
+    func startPolling() {
+        Task {
+            while !Task.isCancelled {
+                let trip = try await apiClient.getTrip(tripId)
+                handleStatusUpdate(trip.status)
+                
+                if trip.status == "COMPLETED" || trip.status == "CANCELLED" {
+                    break
+                }
+                
+                try await Task.sleep(nanoseconds: UInt64(intervalSeconds * 1_000_000_000))
+            }
+        }
+    }
+}
+```
+
+### 21.5 Handling de WebSocket Reconnection (v2)
 
 ```swift
 class WebSocketManager {
@@ -1640,10 +1610,7 @@ class WebSocketManager {
 // Networking
 import Alamofire
 
-// WebSocket
-import Starscream
-
-// Maps
+// Maps + Geocoding (usar diretamente no cliente enquanto API de geocoding não existe)
 import MapboxMaps
 
 // Push Notifications
@@ -1659,10 +1626,10 @@ import FirebaseAnalytics
 // Networking
 implementation 'com.squareup.retrofit2:retrofit:2.9.0'
 
-// WebSocket
+// WebSocket (v2)
 implementation 'com.squareup.okhttp3:okhttp:4.11.0'
 
-// Maps
+// Maps + Geocoding (usar diretamente no cliente)
 implementation 'com.mapbox.maps:android:10.16.0'
 
 // Push Notifications
@@ -1688,6 +1655,7 @@ class RappiDriveAPIClient {
         request.httpMethod = "POST"
         request.setValue("Bearer \(AuthManager.shared.accessToken!)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(AuthManager.shared.tenantId, forHTTPHeaderField: "X-Tenant-ID")
         
         let body: [String: Any] = [
             "tenantId": AuthManager.shared.tenantId,
@@ -1722,6 +1690,7 @@ class RappiDriveAPIClient {
 
 | Versão | Data | Mudanças |
 |--------|------|----------|
+| 1.1 | 2026-04-24 | Corrigir contratos de endpoints (métodos HTTP, paths, responses); marcar features não implementadas; adicionar endpoints não documentados; atualizar auth para Keycloak OIDC + PKCE |
 | 1.0 | 2026-01-14 | Documentação inicial completa |
 
 ---
@@ -1734,4 +1703,4 @@ class RappiDriveAPIClient {
 
 ---
 
-**Última atualização**: 14 de janeiro de 2026
+**Última atualização**: 24 de abril de 2026

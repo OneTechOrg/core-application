@@ -37,17 +37,24 @@ public class SecurityConfiguration {
     @Value("${rappidrive.security.e2e-permit-all:false}")
     private boolean e2ePermitAll;
 
+    @Value("${rappidrive.docs.public:true}")
+    private boolean docsPublic;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
+                if (docsPublic) {
+                    auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll();
+                } else {
+                    auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").hasRole("ADMIN");
+                }
+
                 auth.requestMatchers(
                     "/actuator/health",
-                    "/actuator/prometheus",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**"
+                    "/actuator/prometheus"
                 ).permitAll();
                 
                 if (e2ePermitAll) {

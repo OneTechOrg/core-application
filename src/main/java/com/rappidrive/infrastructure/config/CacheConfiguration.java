@@ -13,10 +13,14 @@ import org.springframework.context.annotation.Configuration;
 public class CacheConfiguration {
 
     public static final String FARE_CONFIG_CACHE = "fareConfigByTenant";
+    public static final String TENANT_EXISTS_CACHE = "tenantExists";
 
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager(FARE_CONFIG_CACHE);
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager(
+            FARE_CONFIG_CACHE,
+            TENANT_EXISTS_CACHE
+        );
         cacheManager.setCaffeine(Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofMinutes(30))
             .maximumSize(500));

@@ -3,10 +3,12 @@ package com.rappidrive.infrastructure.persistence.adapters;
 import com.rappidrive.application.ports.output.TenantRepositoryPort;
 import com.rappidrive.domain.entities.Tenant;
 import com.rappidrive.domain.valueobjects.TenantId;
+import com.rappidrive.infrastructure.config.CacheConfiguration;
 import com.rappidrive.infrastructure.persistence.entities.TenantJpaEntity;
 import com.rappidrive.infrastructure.persistence.repositories.SpringDataTenantRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -39,6 +41,7 @@ public class JpaTenantRepositoryAdapter implements TenantRepositoryPort {
     }
 
     @Override
+    @Cacheable(value = CacheConfiguration.TENANT_EXISTS_CACHE, key = "#tenantId.asString()")
     public boolean existsById(TenantId tenantId) {
         return repository.existsById(UUID.fromString(tenantId.asString()));
     }
