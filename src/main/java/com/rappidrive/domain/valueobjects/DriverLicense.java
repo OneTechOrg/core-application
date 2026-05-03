@@ -148,7 +148,7 @@ public final class DriverLicense {
     
     @Override
     public String toString() {
-        return String.format("DriverLicense(number=%s, category=%s, definitive=%s, valid=%s)",
-            getFormatted(), category, isDefinitive, isValid());
+        return String.format("DriverLicense(number=***.***.***-%s, category=%s, definitive=%s, valid=%s)",
+            number.substring(9), category, isDefinitive, isValid());
     }
 }

@@ -118,6 +118,6 @@ public final class CPF {
     
     @Override
     public String toString() {
-        return getFormatted();
+        return "***.***.***-" + value.substring(9);
     }
 }

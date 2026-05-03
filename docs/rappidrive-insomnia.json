@@ -1,0 +1,1085 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-04-24T00:00:00.000Z",
+  "__export_source": "rappidrive-backend",
+  "resources": [
+    {
+      "_id": "wrk_rappidrive",
+      "_type": "workspace",
+      "name": "RappiDrive Backend",
+      "description": "Collection completa da API RappiDrive — plataforma white-label de ride-hailing",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_rappidrive",
+      "name": "Local Dev",
+      "data": {
+        "base_url": "http://localhost:8080",
+        "keycloak_url": "http://localhost:8180",
+        "realm": "rappidrive-test",
+        "client_id": "rappidrive-api",
+        "client_secret": "test-secret",
+        "tenant_id": "11111111-1111-1111-1111-111111111111",
+        "token_passenger": "<cole aqui o token do passenger-test>",
+        "token_driver": "<cole aqui o token do driver-test>",
+        "token_admin": "<cole aqui o token do admin-test>",
+        "passenger_id": "<cole o UUID do passageiro criado>",
+        "driver_id": "<cole o UUID do motorista criado>",
+        "vehicle_id": "<cole o UUID do veículo criado>",
+        "trip_id": "<cole o UUID da viagem criada>",
+        "payment_id": "<cole o UUID do pagamento criado>",
+        "rating_id": "<cole o UUID da avaliação criada>",
+        "notification_id": "<cole o UUID da notificação criada>",
+        "approval_id": "<cole o UUID da aprovação criada>"
+      },
+      "color": "#4CAF50"
+    },
+
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "🔐 Autenticação (Keycloak)",
+      "description": "Obtenção de tokens JWT para cada role"
+    },
+    {
+      "_id": "req_auth_passenger",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Token — passenger-test (ROLE_PASSENGER)",
+      "method": "POST",
+      "url": "{{ keycloak_url }}/realms/{{ realm }}/protocol/openid-connect/token",
+      "headers": [
+        { "name": "Content-Type", "value": "application/x-www-form-urlencoded" }
+      ],
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          { "name": "grant_type",    "value": "password" },
+          { "name": "client_id",     "value": "{{ client_id }}" },
+          { "name": "client_secret", "value": "{{ client_secret }}" },
+          { "name": "username",      "value": "passenger-test" },
+          { "name": "password",      "value": "passenger123" }
+        ]
+      },
+      "authentication": {},
+      "description": "Copie o access_token e cole na variável de ambiente token_passenger"
+    },
+    {
+      "_id": "req_auth_driver",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Token — driver-test (ROLE_DRIVER)",
+      "method": "POST",
+      "url": "{{ keycloak_url }}/realms/{{ realm }}/protocol/openid-connect/token",
+      "headers": [
+        { "name": "Content-Type", "value": "application/x-www-form-urlencoded" }
+      ],
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          { "name": "grant_type",    "value": "password" },
+          { "name": "client_id",     "value": "{{ client_id }}" },
+          { "name": "client_secret", "value": "{{ client_secret }}" },
+          { "name": "username",      "value": "driver-test" },
+          { "name": "password",      "value": "driver123" }
+        ]
+      },
+      "authentication": {},
+      "description": "Copie o access_token e cole na variável de ambiente token_driver"
+    },
+    {
+      "_id": "req_auth_admin",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Token — admin-test (ROLE_ADMIN)",
+      "method": "POST",
+      "url": "{{ keycloak_url }}/realms/{{ realm }}/protocol/openid-connect/token",
+      "headers": [
+        { "name": "Content-Type", "value": "application/x-www-form-urlencoded" }
+      ],
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          { "name": "grant_type",    "value": "password" },
+          { "name": "client_id",     "value": "{{ client_id }}" },
+          { "name": "client_secret", "value": "{{ client_secret }}" },
+          { "name": "username",      "value": "admin-test" },
+          { "name": "password",      "value": "admin123" }
+        ]
+      },
+      "authentication": {},
+      "description": "Copie o access_token e cole na variável de ambiente token_admin"
+    },
+    {
+      "_id": "req_auth_client_credentials",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Token — client_credentials (service account)",
+      "method": "POST",
+      "url": "{{ keycloak_url }}/realms/{{ realm }}/protocol/openid-connect/token",
+      "headers": [
+        { "name": "Content-Type", "value": "application/x-www-form-urlencoded" }
+      ],
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          { "name": "grant_type",    "value": "client_credentials" },
+          { "name": "client_id",     "value": "{{ client_id }}" },
+          { "name": "client_secret", "value": "{{ client_secret }}" }
+        ]
+      },
+      "authentication": {}
+    },
+
+    {
+      "_id": "fld_health",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "🏥 Saúde e Monitoramento",
+      "description": "Endpoints de health check e métricas"
+    },
+    {
+      "_id": "req_actuator_health",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Actuator Health",
+      "method": "GET",
+      "url": "{{ base_url }}/actuator/health",
+      "headers": [],
+      "authentication": {}
+    },
+    {
+      "_id": "req_actuator_prometheus",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Actuator Prometheus Metrics",
+      "method": "GET",
+      "url": "{{ base_url }}/actuator/prometheus",
+      "headers": [],
+      "authentication": {}
+    },
+    {
+      "_id": "req_api_health",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "API Health Check",
+      "method": "GET",
+      "url": "{{ base_url }}/api/health",
+      "headers": [],
+      "authentication": {}
+    },
+
+    {
+      "_id": "fld_admin_tenants",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "🏢 Admin — Tenants (Super Admin)",
+      "description": "Endpoints de gestão de tenants. Requer ROLE_SUPER_ADMIN."
+    },
+    {
+      "_id": "req_tenant_onboard",
+      "_type": "request",
+      "parentId": "fld_admin_tenants",
+      "name": "POST Onboard Tenant",
+      "method": "POST",
+      "url": "{{ base_url }}/api/admin/tenants",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_admin }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tenantId\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n  \"displayName\": \"RappiDrive São Paulo\",\n  \"adminEmail\": \"admin@saopaulo.rappidrive.com\",\n  \"currency\": \"BRL\",\n  \"baseFare\": 5.00,\n  \"pricePerKm\": 2.50,\n  \"pricePerMin\": 0.30,\n  \"serviceAreaName\": \"São Paulo\",\n  \"geoJsonPolygon\": \"{\\\"type\\\":\\\"Polygon\\\",\\\"coordinates\\\":[[[-46.826171875,-23.885837699862005],[-46.560058593750004,-23.885837699862005],[-46.560058593750004,-23.592263984320745],[-46.826171875,-23.592263984320745],[-46.826171875,-23.885837699862005]]]}\"\n}"
+      },
+      "description": "Provisiona um novo tenant na plataforma. Cria admin no Keycloak, configura tarifas e área de serviço. Requer ROLE_SUPER_ADMIN."
+    },
+    {
+      "_id": "req_tenant_health",
+      "_type": "request",
+      "parentId": "fld_admin_tenants",
+      "name": "GET Admin Health Check",
+      "method": "GET",
+      "url": "{{ base_url }}/api/admin/tenants/health",
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_admin }}"
+      }
+    },
+
+    {
+      "_id": "fld_admin_fare_config",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "💰 Admin — Configuração de Tarifas",
+      "description": "Gestão de tarifas por tenant. Requer ROLE_ADMIN."
+    },
+    {
+      "_id": "req_fare_config_get",
+      "_type": "request",
+      "parentId": "fld_admin_fare_config",
+      "name": "GET Configuração de Tarifa por Tenant",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/admin/fare-configurations/tenant/{{ tenant_id }}",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_admin }}"
+      }
+    },
+    {
+      "_id": "req_fare_config_update",
+      "_type": "request",
+      "parentId": "fld_admin_fare_config",
+      "name": "PUT Atualizar Configuração de Tarifa",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/v1/admin/fare-configurations",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_admin }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tenantId\": \"{{ tenant_id }}\",\n  \"baseFare\": 5.00,\n  \"pricePerKm\": 2.50,\n  \"pricePerMinute\": 0.30,\n  \"minimumFare\": 8.00,\n  \"platformCommissionRate\": 0.20\n}"
+      }
+    },
+
+    {
+      "_id": "fld_admin_approvals",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "✅ Admin — Aprovações de Motoristas",
+      "description": "Fluxo de aprovação de cadastro de motoristas. Requer ROLE_ADMIN."
+    },
+    {
+      "_id": "req_approval_submit",
+      "_type": "request",
+      "parentId": "fld_admin_approvals",
+      "name": "POST Submeter Aprovação",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/admin/approvals",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"driverId\": \"{{ driver_id }}\",\n  \"documentUrls\": [\n    \"https://docs.example.com/cnh-frente.jpg\",\n    \"https://docs.example.com/cnh-verso.jpg\",\n    \"https://docs.example.com/documento-veiculo.jpg\"\n  ]\n}"
+      },
+      "description": "Motorista submete documentos para aprovação. Cole o driver_id na variável de ambiente após criar o motorista."
+    },
+    {
+      "_id": "req_approval_list_pending",
+      "_type": "request",
+      "parentId": "fld_admin_approvals",
+      "name": "GET Listar Aprovações Pendentes",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/admin/approvals/pending?page=0&size=10",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_admin }}"
+      }
+    },
+    {
+      "_id": "req_approval_approve",
+      "_type": "request",
+      "parentId": "fld_admin_approvals",
+      "name": "POST Aprovar Motorista",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/admin/approvals/{{ approval_id }}/approve",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_admin }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"adminId\": null\n}"
+      },
+      "description": "adminId é extraído automaticamente do JWT quando autenticado."
+    },
+    {
+      "_id": "req_approval_reject",
+      "_type": "request",
+      "parentId": "fld_admin_approvals",
+      "name": "POST Rejeitar Motorista",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/admin/approvals/{{ approval_id }}/reject",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_admin }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"adminId\": null,\n  \"rejectionReason\": \"Documentação incompleta ou ilegível\",\n  \"permanentBan\": false\n}"
+      }
+    },
+
+    {
+      "_id": "fld_passengers",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "👤 Passageiros",
+      "description": "Gestão de passageiros. Requer ROLE_PASSENGER."
+    },
+    {
+      "_id": "req_passenger_create",
+      "_type": "request",
+      "parentId": "fld_passengers",
+      "name": "POST Criar Passageiro",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/passengers",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tenantId\": \"{{ tenant_id }}\",\n  \"fullName\": \"Maria da Silva Santos\",\n  \"email\": \"maria.silva@example.com\",\n  \"phone\": \"+5511988880001\"\n}"
+      },
+      "description": "Cria um novo passageiro. Salve o id retornado na variável passenger_id."
+    },
+    {
+      "_id": "req_passenger_get",
+      "_type": "request",
+      "parentId": "fld_passengers",
+      "name": "GET Buscar Passageiro por ID",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/passengers/{{ passenger_id }}",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      }
+    },
+
+    {
+      "_id": "fld_drivers",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "🚗 Motoristas",
+      "description": "Gestão de motoristas. Requer ROLE_DRIVER."
+    },
+    {
+      "_id": "req_driver_create",
+      "_type": "request",
+      "parentId": "fld_drivers",
+      "name": "POST Criar Motorista",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/drivers",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tenantId\": \"{{ tenant_id }}\",\n  \"fullName\": \"Carlos Eduardo Silva\",\n  \"email\": \"carlos.silva@example.com\",\n  \"cpf\": \"11144477735\",\n  \"phone\": \"+5511977770001\",\n  \"driverLicense\": {\n    \"number\": \"12345678901\",\n    \"category\": \"B\",\n    \"issueDate\": \"2020-01-15\",\n    \"expiryDate\": \"2030-01-15\",\n    \"isDefinitive\": true\n  }\n}"
+      },
+      "description": "CPF deve conter exatamente 11 dígitos (sem pontuação). Salve o id retornado na variável driver_id."
+    },
+    {
+      "_id": "req_driver_get",
+      "_type": "request",
+      "parentId": "fld_drivers",
+      "name": "GET Buscar Motorista por ID",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/drivers/{{ driver_id }}",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+    {
+      "_id": "req_driver_activate",
+      "_type": "request",
+      "parentId": "fld_drivers",
+      "name": "PUT Ativar Motorista",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/v1/drivers/{{ driver_id }}/activate",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+    {
+      "_id": "req_driver_location",
+      "_type": "request",
+      "parentId": "fld_drivers",
+      "name": "PUT Atualizar Localização do Motorista",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/v1/drivers/{{ driver_id }}/location",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"location\": {\n    \"latitude\": -23.55052,\n    \"longitude\": -46.633308\n  }\n}"
+      },
+      "description": "Motorista deve estar ACTIVE para atualizar localização."
+    },
+    {
+      "_id": "req_driver_nearby",
+      "_type": "request",
+      "parentId": "fld_drivers",
+      "name": "GET Motoristas Próximos (PostGIS KNN)",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/drivers/nearby?tenantId={{ tenant_id }}&latitude=-23.55052&longitude=-46.633308&radiusKm=5.0",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "description": "Busca motoristas disponíveis num raio usando ST_DWithin + KNN. Default radiusKm=5.0."
+    },
+    {
+      "_id": "req_driver_available",
+      "_type": "request",
+      "parentId": "fld_drivers",
+      "name": "GET Motoristas Disponíveis",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/drivers/available",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+
+    {
+      "_id": "fld_vehicles",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "🚙 Veículos",
+      "description": "Gestão de veículos. Requer autenticação."
+    },
+    {
+      "_id": "req_vehicle_create",
+      "_type": "request",
+      "parentId": "fld_vehicles",
+      "name": "POST Criar Veículo",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/vehicles",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tenantId\": \"{{ tenant_id }}\",\n  \"driverId\": \"{{ driver_id }}\",\n  \"licensePlate\": \"ABC1D23\",\n  \"brand\": \"Toyota\",\n  \"model\": \"Corolla\",\n  \"year\": 2022,\n  \"color\": \"Prata\",\n  \"type\": \"SEDAN\",\n  \"numberOfDoors\": 4,\n  \"seats\": 5\n}"
+      },
+      "description": "type: SEDAN | HATCHBACK | SUV. numberOfDoors deve ser exatamente 4. Salve o id em vehicle_id."
+    },
+    {
+      "_id": "req_vehicle_get",
+      "_type": "request",
+      "parentId": "fld_vehicles",
+      "name": "GET Buscar Veículo por ID",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/vehicles/{{ vehicle_id }}",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+    {
+      "_id": "req_vehicle_list_by_driver",
+      "_type": "request",
+      "parentId": "fld_vehicles",
+      "name": "GET Listar Veículos do Motorista",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/vehicles/driver/{{ driver_id }}",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+    {
+      "_id": "req_vehicle_active_by_driver",
+      "_type": "request",
+      "parentId": "fld_vehicles",
+      "name": "GET Veículo Ativo do Motorista",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/vehicles/driver/{{ driver_id }}/active",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+    {
+      "_id": "req_vehicle_update",
+      "_type": "request",
+      "parentId": "fld_vehicles",
+      "name": "PUT Atualizar Veículo",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/v1/vehicles/{{ vehicle_id }}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"color\": \"Preto\"\n}"
+      }
+    },
+    {
+      "_id": "req_vehicle_assign",
+      "_type": "request",
+      "parentId": "fld_vehicles",
+      "name": "PUT Associar Veículo a Motorista",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/v1/vehicles/{{ vehicle_id }}/assign",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"driverId\": \"{{ driver_id }}\"\n}"
+      }
+    },
+    {
+      "_id": "req_vehicle_activate",
+      "_type": "request",
+      "parentId": "fld_vehicles",
+      "name": "PUT Ativar Veículo",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/v1/vehicles/{{ vehicle_id }}/activate",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+
+    {
+      "_id": "fld_trips",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "🗺️ Viagens",
+      "description": "Ciclo de vida completo de uma viagem. Requer autenticação."
+    },
+    {
+      "_id": "req_trip_create",
+      "_type": "request",
+      "parentId": "fld_trips",
+      "name": "POST Criar Viagem",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/trips",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tenantId\": \"{{ tenant_id }}\",\n  \"passengerId\": \"{{ passenger_id }}\",\n  \"origin\": {\n    \"latitude\": -23.55052,\n    \"longitude\": -46.633308\n  },\n  \"destination\": {\n    \"latitude\": -23.561414,\n    \"longitude\": -46.656056\n  }\n}"
+      },
+      "description": "Cria viagem com status REQUESTED. Salve o id em trip_id."
+    },
+    {
+      "_id": "req_trip_get",
+      "_type": "request",
+      "parentId": "fld_trips",
+      "name": "GET Buscar Viagem por ID",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/trips/{{ trip_id }}",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      }
+    },
+    {
+      "_id": "req_trip_assign_driver",
+      "_type": "request",
+      "parentId": "fld_trips",
+      "name": "PUT Atribuir Motorista à Viagem",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/v1/trips/{{ trip_id }}/assign-driver",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"driverId\": \"{{ driver_id }}\"\n}"
+      },
+      "description": "Viagem deve estar em status REQUESTED. Motorista deve estar ACTIVE."
+    },
+    {
+      "_id": "req_trip_start",
+      "_type": "request",
+      "parentId": "fld_trips",
+      "name": "PUT Iniciar Viagem",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/v1/trips/{{ trip_id }}/start",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "description": "Viagem deve estar em status DRIVER_ASSIGNED."
+    },
+    {
+      "_id": "req_trip_complete",
+      "_type": "request",
+      "parentId": "fld_trips",
+      "name": "PUT Concluir Viagem (sem pagamento)",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/v1/trips/{{ trip_id }}/complete",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "description": "Conclui a viagem sem processar pagamento. Viagem deve estar em status IN_PROGRESS."
+    },
+    {
+      "_id": "req_trip_complete_with_payment",
+      "_type": "request",
+      "parentId": "fld_trips",
+      "name": "POST Concluir Viagem com Pagamento",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/trips/{{ trip_id }}/complete-with-payment",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"dropoffLocation\": {\n    \"latitude\": -23.561414,\n    \"longitude\": -46.656056\n  },\n  \"paymentMethod\": {\n    \"type\": \"CREDIT_CARD\",\n    \"cardLast4\": \"4242\",\n    \"cardBrand\": \"Visa\",\n    \"pixKey\": null\n  }\n}"
+      },
+      "description": "Calcula tarifa automaticamente e processa pagamento. type: CREDIT_CARD | DEBIT_CARD | PIX | CASH."
+    },
+    {
+      "_id": "req_trip_payment_details",
+      "_type": "request",
+      "parentId": "fld_trips",
+      "name": "GET Detalhes da Viagem com Pagamento",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/trips/{{ trip_id }}/payment-details",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      }
+    },
+    {
+      "_id": "req_trip_cancel",
+      "_type": "request",
+      "parentId": "fld_trips",
+      "name": "POST Cancelar Viagem",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/trips/{{ trip_id }}/cancel",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"reason\": \"PASSENGER_CHANGE_OF_PLANS\",\n  \"additionalNotes\": \"Cancelado por teste\"\n}"
+      },
+      "description": "Motivos do passageiro: PASSENGER_CHANGE_OF_PLANS | PASSENGER_PRICE_TOO_HIGH | PASSENGER_WAIT_TOO_LONG | PASSENGER_WRONG_LOCATION | PASSENGER_OTHER. Motivos do motorista: DRIVER_PASSENGER_NOT_FOUND | DRIVER_UNSAFE_LOCATION | DRIVER_VEHICLE_ISSUE | DRIVER_OTHER."
+    },
+
+    {
+      "_id": "fld_fares",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "🧮 Tarifas",
+      "description": "Cálculo de tarifas. Requer FareConfiguration cadastrada para o tenant."
+    },
+    {
+      "_id": "req_fare_calculate",
+      "_type": "request",
+      "parentId": "fld_fares",
+      "name": "POST Calcular Tarifa",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/fares/calculate",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tenantId\": \"{{ tenant_id }}\",\n  \"distanceInKm\": 5.2,\n  \"durationInMinutes\": 18,\n  \"tripStartTime\": \"2026-04-24T15:00:00\",\n  \"vehicleType\": \"SEDAN\"\n}"
+      },
+      "description": "vehicleType: SEDAN | HATCHBACK | SUV. Requer FareConfiguration existente para o tenant (criada via onboard ou PUT /admin/fare-configurations)."
+    },
+
+    {
+      "_id": "fld_payments",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "💳 Pagamentos",
+      "description": "Processamento e consulta de pagamentos. Requer autenticação."
+    },
+    {
+      "_id": "req_payment_process",
+      "_type": "request",
+      "parentId": "fld_payments",
+      "name": "POST Processar Pagamento",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/payments",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tenantId\": \"{{ tenant_id }}\",\n  \"tripId\": \"{{ trip_id }}\",\n  \"amount\": 32.50,\n  \"paymentMethodType\": \"CREDIT_CARD\",\n  \"cardLast4\": \"4242\",\n  \"cardBrand\": \"Visa\",\n  \"pixKey\": null\n}"
+      },
+      "description": "paymentMethodType: CREDIT_CARD | DEBIT_CARD | PIX | CASH. Salve o id em payment_id."
+    },
+    {
+      "_id": "req_payment_get",
+      "_type": "request",
+      "parentId": "fld_payments",
+      "name": "GET Buscar Pagamento por ID",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/payments/{{ payment_id }}",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+    {
+      "_id": "req_payment_by_trip",
+      "_type": "request",
+      "parentId": "fld_payments",
+      "name": "GET Buscar Pagamento por Viagem",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/payments/trip/{{ trip_id }}",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+    {
+      "_id": "req_payment_by_period",
+      "_type": "request",
+      "parentId": "fld_payments",
+      "name": "GET Pagamentos por Tenant e Período",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/payments/tenant/{{ tenant_id }}/period?startDate=2026-04-01T00:00:00&endDate=2026-04-30T23:59:59",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_admin }}"
+      }
+    },
+    {
+      "_id": "req_payment_refund",
+      "_type": "request",
+      "parentId": "fld_payments",
+      "name": "POST Reembolsar Pagamento",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/payments/refund",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_admin }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"paymentId\": \"{{ payment_id }}\",\n  \"reason\": \"Solicitação do passageiro após cancelamento\"\n}"
+      },
+      "description": "Disponível apenas para métodos reembolsáveis: CREDIT_CARD, DEBIT_CARD, PIX. CASH não é reembolsável."
+    },
+
+    {
+      "_id": "fld_ratings",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "⭐ Avaliações",
+      "description": "Sistema de avaliação bidirecional. Requer autenticação."
+    },
+    {
+      "_id": "req_rating_create",
+      "_type": "request",
+      "parentId": "fld_ratings",
+      "name": "POST Criar Avaliação",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/ratings?rateeId={{ driver_id }}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" },
+        { "name": "X-User-Id", "value": "{{ passenger_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tripId\": \"{{ trip_id }}\",\n  \"score\": 5,\n  \"comment\": \"Ótimo motorista, pontual e educado!\"\n}"
+      },
+      "description": "score: 1-5. rateeId (query param) = quem está sendo avaliado. X-User-Id = quem avalia. Salve o id em rating_id."
+    },
+    {
+      "_id": "req_rating_driver_summary",
+      "_type": "request",
+      "parentId": "fld_ratings",
+      "name": "GET Resumo de Avaliações do Motorista",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/ratings/drivers/{{ driver_id }}/summary",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+    {
+      "_id": "req_rating_passenger",
+      "_type": "request",
+      "parentId": "fld_ratings",
+      "name": "GET Avaliação do Passageiro",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/ratings/passengers/{{ passenger_id }}",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      }
+    },
+    {
+      "_id": "req_rating_trip",
+      "_type": "request",
+      "parentId": "fld_ratings",
+      "name": "GET Avaliações da Viagem",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/ratings/trips/{{ trip_id }}",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      }
+    },
+    {
+      "_id": "req_rating_report",
+      "_type": "request",
+      "parentId": "fld_ratings",
+      "name": "POST Reportar Avaliação Ofensiva",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/ratings/{{ rating_id }}/report",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" },
+        { "name": "X-User-Id", "value": "{{ driver_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_driver }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"reason\": \"Comentário ofensivo e inapropriado\"\n}"
+      }
+    },
+
+    {
+      "_id": "fld_notifications",
+      "_type": "request_group",
+      "parentId": "wrk_rappidrive",
+      "name": "🔔 Notificações",
+      "description": "Sistema de notificações. Requer autenticação. Headers X-User-Id e X-Tenant-Id obrigatórios."
+    },
+    {
+      "_id": "req_notification_send",
+      "_type": "request",
+      "parentId": "fld_notifications",
+      "name": "POST Enviar Notificação",
+      "method": "POST",
+      "url": "{{ base_url }}/api/v1/notifications",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" },
+        { "name": "X-Tenant-Id", "value": "{{ tenant_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_admin }}"
+      },
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userId\": \"{{ passenger_id }}\",\n  \"title\": \"Sua viagem está a caminho!\",\n  \"message\": \"Motorista Carlos está a 3 minutos de você.\",\n  \"idempotencyKey\": \"trip-{{ trip_id }}-driver-assigned\"\n}"
+      },
+      "description": "Nota: este controller usa o header X-Tenant-Id (com 'd' minúsculo), diferente dos demais que usam X-Tenant-ID."
+    },
+    {
+      "_id": "req_notification_list",
+      "_type": "request",
+      "parentId": "fld_notifications",
+      "name": "GET Listar Notificações do Usuário",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/notifications?status=UNREAD&page=0&size=20",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" },
+        { "name": "X-Tenant-Id", "value": "{{ tenant_id }}" },
+        { "name": "X-User-Id", "value": "{{ passenger_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      },
+      "description": "status (opcional): UNREAD | READ | ALL"
+    },
+    {
+      "_id": "req_notification_unread_count",
+      "_type": "request",
+      "parentId": "fld_notifications",
+      "name": "GET Contador de Não Lidas",
+      "method": "GET",
+      "url": "{{ base_url }}/api/v1/notifications/unread-count",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" },
+        { "name": "X-Tenant-Id", "value": "{{ tenant_id }}" },
+        { "name": "X-User-Id", "value": "{{ passenger_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      }
+    },
+    {
+      "_id": "req_notification_mark_read",
+      "_type": "request",
+      "parentId": "fld_notifications",
+      "name": "PATCH Marcar como Lida",
+      "method": "PATCH",
+      "url": "{{ base_url }}/api/v1/notifications/{{ notification_id }}/read",
+      "headers": [
+        { "name": "X-Tenant-ID", "value": "{{ tenant_id }}" },
+        { "name": "X-Tenant-Id", "value": "{{ tenant_id }}" },
+        { "name": "X-User-Id", "value": "{{ passenger_id }}" }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ token_passenger }}"
+      }
+    }
+  ]
+}

@@ -96,7 +96,7 @@ public class ServiceAreaController {
         @ApiResponse(responseCode = "403", description = "Admin role required")
     })
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/api/admin/service-areas")
+    @PostMapping("/api/v1/admin/service-areas")
     public ResponseEntity<ServiceAreaResponse> create(
             @Valid @RequestBody CreateServiceAreaRequest request) {
         ServiceArea area = createServiceAreaUseCase.execute(mapper.toCommand(request));
@@ -111,7 +111,7 @@ public class ServiceAreaController {
         @ApiResponse(responseCode = "409", description = "Service area already inactive")
     })
     @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/api/admin/service-areas/{id}/deactivate")
+    @PatchMapping("/api/v1/admin/service-areas/{id}/deactivate")
     public ResponseEntity<ServiceAreaResponse> deactivate(@PathVariable UUID id) {
         ServiceArea area = toggleStatusUseCase.deactivate(id);
         return ResponseEntity.ok(mapper.toResponse(area));
@@ -125,7 +125,7 @@ public class ServiceAreaController {
         @ApiResponse(responseCode = "409", description = "Service area already active")
     })
     @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/api/admin/service-areas/{id}/activate")
+    @PatchMapping("/api/v1/admin/service-areas/{id}/activate")
     public ResponseEntity<ServiceAreaResponse> activate(@PathVariable UUID id) {
         ServiceArea area = toggleStatusUseCase.activate(id);
         return ResponseEntity.ok(mapper.toResponse(area));

@@ -9,6 +9,7 @@ import com.rappidrive.presentation.dto.response.FareConfigurationResponse;
 import com.rappidrive.presentation.mappers.FareConfigurationDtoMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -19,6 +20,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/v1/admin/fare-configurations")
+@PreAuthorize("hasRole('ADMIN')")
 public class FareConfigurationController {
     
     private final GetFareConfigurationInputPort getFareConfigurationUseCase;

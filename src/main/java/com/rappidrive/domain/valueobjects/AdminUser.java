@@ -99,7 +99,6 @@ public final class AdminUser {
                 "id=" + id +
                 ", email=" + email +
                 ", role=" + role +
-            ", fullName='" + fullName + '\'' +
             ", tenantId=" + tenantId +
                 '}';
     }

@@ -103,6 +103,6 @@ class EmailTest {
     @Test
     void shouldReturnEmailInToString() {
         Email email = new Email("user@example.com");
-        assertEquals("user@example.com", email.toString());
+        assertEquals("use***@example.com", email.toString());
     }
 }

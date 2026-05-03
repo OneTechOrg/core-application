@@ -47,6 +47,9 @@ keycloak:
   resource: rappidrive-api
   credentials:
     secret: test-secret
+  admin:
+    username: admin
+    password: admin
   token-endpoint: http://localhost:8180/realms/rappidrive-test/protocol/openid-connect/token
   client-id: rappidrive-api
 

@@ -61,3 +61,13 @@ management:
   zipkin:
     tracing:
       endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+
+keycloak:
+  auth-server-url: http://localhost:8180
+  realm: rappidrive-test
+  resource: rappidrive-api
+  credentials:
+    secret: test-secret
+  admin:
+    username: admin
+    password: admin

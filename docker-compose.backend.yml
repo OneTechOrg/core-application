@@ -1,0 +1,120 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: rappidrive-postgres
+    environment:
+      POSTGRES_DB: rappidrive_dev
+      POSTGRES_USER: rappidrive
+      POSTGRES_PASSWORD: rappidrive_dev_password
+      POSTGRES_INITDB_ARGS: '--encoding=UTF-8'
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - rappidrive-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rappidrive -d rappidrive_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-init:
+    image: postgis/postgis:16-3.4
+    container_name: rappidrive-postgres-init
+    environment:
+      PGPASSWORD: rappidrive_dev_password
+    command:
+      - bash
+      - -c
+      - |
+        psql -h postgres -U rappidrive -d rappidrive_dev -tc \
+          "SELECT 1 FROM pg_database WHERE datname = 'keycloak'" | grep -q 1 \
+        || (psql -h postgres -U rappidrive -d rappidrive_dev -c 'CREATE DATABASE keycloak' \
+            && psql -h postgres -U rappidrive -d keycloak -c \
+               'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; CREATE EXTENSION IF NOT EXISTS "pgcrypto";')
+    networks:
+      - rappidrive-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rappidrive-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DATABASE_URL: jdbc:postgresql://postgres:5432/rappidrive_dev
+      DATABASE_USERNAME: rappidrive
+      DATABASE_PASSWORD: rappidrive_dev_password
+      KEYCLOAK_ISSUER_URI: http://keycloak:8180/realms/rappidrive-test
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8180/realms/rappidrive-test/protocol/openid-connect/certs
+      KEYCLOAK_SERVER_URL: http://keycloak:8180
+      KEYCLOAK_REALM: rappidrive-test
+      KEYCLOAK_CLIENT_ID: rappidrive-api
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-test-secret}
+      JAVA_OPTS: "-Xms512m -Xmx2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+    ports:
+      - "8080:8080"
+    networks:
+      - rappidrive-network
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.3
+    container_name: rappidrive-keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: rappidrive
+      KC_DB_PASSWORD: rappidrive_dev_password
+      KC_HTTP_PORT: 8180
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: true
+      KC_HEALTH_ENABLED: true
+    command:
+      - start-dev
+      - --import-realm
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./src/test/resources/keycloak/rappidrive-test-realm.json:/opt/keycloak/data/import/rappidrive-test-realm.json:ro
+    ports:
+      - "8180:8180"
+    networks:
+      - rappidrive-network
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8180 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+volumes:
+  postgres_data:
+    driver: local
+  keycloak_data:
+    driver: local
+
+networks:
+  rappidrive-network:
+    driver: bridge

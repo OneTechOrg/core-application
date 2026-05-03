@@ -33,3 +33,4 @@ logs/
 
 # Docker volumes
 docker/data/
+docker/pgadmin/pgpass

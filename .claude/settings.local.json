@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"Port\\\\.java$\")",
+      "Bash(curl -s http://localhost:8080/v3/api-docs)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c ' *)",
+      "Bash(docker exec rappidrive-postgres psql -U rappidrive -d rappidrive_dev -c 'INSERT INTO fare_configurations \\(tenant_id, base_fare, price_per_km, price_per_minute, minimum_fare, platform_commission_rate\\) *)",
+      "Bash(xargs cat *)",
+      "Bash(mvn test *)"
+    ]
+  }
+}

@@ -111,3 +111,6 @@ keycloak:
   resource: ${KEYCLOAK_CLIENT_ID:rappidrive-api}
   credentials:
     secret: ${KEYCLOAK_CLIENT_SECRET:test-secret}
+  admin:
+    username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}

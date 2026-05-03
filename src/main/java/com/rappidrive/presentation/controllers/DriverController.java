@@ -47,7 +47,9 @@ public class DriverController {
     })
     @PostMapping
     public ResponseEntity<DriverResponse> createDriver(@Valid @RequestBody CreateDriverRequest request) {
-        log.info("Creating driver: email={}, cpf={}", request.email(), request.cpf());
+        String maskedEmail = request.email().replaceAll("(^.{3})[^@]*", "$1***");
+        String maskedCpf = "***.***.***-" + request.cpf().substring(request.cpf().length() - 2);
+        log.info("Creating driver: email={}, cpf={}", maskedEmail, maskedCpf);
         
         CreateDriverInputPort.CreateDriverCommand command = new CreateDriverInputPort.CreateDriverCommand(
             mapper.toTenantId(request.tenantId()),

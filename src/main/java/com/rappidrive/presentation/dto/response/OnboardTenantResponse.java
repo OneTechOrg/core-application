@@ -16,9 +16,6 @@ public record OnboardTenantResponse(
         @JsonProperty("admin_email")
         String adminEmail,
         
-        @JsonProperty("temporary_password")
-        String temporaryPassword,
-        
         @JsonProperty("keycloak_user_id")
         String keycloakUserId,
         

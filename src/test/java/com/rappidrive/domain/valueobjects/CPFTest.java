@@ -108,6 +108,6 @@ class CPFTest {
     @Test
     void shouldReturnFormattedCpfInToString() {
         CPF cpf = new CPF("12345678909");
-        assertEquals("123.456.789-09", cpf.toString());
+        assertEquals("***.***.***-09", cpf.toString());
     }
 }

@@ -38,7 +38,6 @@ public class OnboardTenantDtoMapper {
                 result.tenantId().getValue().toString(),
                 result.displayName(),
                 result.adminEmail(),
-                result.temporaryPassword(),
                 result.keycloakUserId(),
                 result.keycloakGroupId(),
                 result.serviceAreaId(),

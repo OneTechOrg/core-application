@@ -155,7 +155,10 @@ public final class PaymentMethod {
         } else if (type == PaymentMethodType.DEBIT_CARD) {
             return "Debit Card ****" + cardLast4 + " (" + cardBrand + ")";
         } else if (type == PaymentMethodType.PIX) {
-            return "PIX: " + pixKey;
+            String maskedPix = pixKey.length() > 4 
+                ? "***" + pixKey.substring(pixKey.length() - 4) 
+                : "***";
+            return "PIX: " + maskedPix;
         } else {
             return "Cash";
         }

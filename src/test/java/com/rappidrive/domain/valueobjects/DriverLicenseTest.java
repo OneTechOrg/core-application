@@ -250,7 +250,7 @@ class DriverLicenseTest {
         
         String str = license.toString();
         
-        assertTrue(str.contains("123.456.789-01"));
+        assertTrue(str.contains("***.***.***-01"));
         assertTrue(str.contains("B"));
         assertTrue(str.contains("true")); // isValid
     }

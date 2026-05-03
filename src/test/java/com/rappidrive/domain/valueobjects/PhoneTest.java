@@ -136,6 +136,6 @@ class PhoneTest {
     @Test
     void shouldReturnUnformattedPhoneInToString() {
         Phone phone = new Phone("+5511987654321");
-        assertEquals("+5511987654321", phone.toString());
+        assertEquals("**********4321", phone.toString());
     }
 }

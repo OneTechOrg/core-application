@@ -123,6 +123,6 @@ public final class Phone {
     
     @Override
     public String toString() {
-        return value;
+        return value.substring(0, value.length() - 4).replaceAll(".", "*") + value.substring(value.length() - 4);
     }
 }
