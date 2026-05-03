@@ -6,6 +6,7 @@
 - Para visão rápida: consulte o resumo em [HIST-2026-012-RESUMO-PT.md](HIST-2026-012-RESUMO-PT.md) e os diagramas em [HIST-2026-012-DIAGRAMS.md](HIST-2026-012-DIAGRAMS.md).
 
 ## [ACTIVE] Documentos vigentes (2026)
+- [HIST-2026-029.md](HIST-2026-029.md) — Backend Administrativo e Dashboards (Admin API)
 - [HIST-2026-028.md](HIST-2026-028.md) — Mobile: captura de cartão com SDK Stripe e criação de PaymentMethod (iOS + Android)
 - [HIST-2026-027.md](HIST-2026-027.md) — Integração com Stripe: StripePaymentGatewayAdapter substituindo o mock
 - [HIST-2026-026.md](HIST-2026-026.md) — API de gestão de áreas de serviço (Service Area CRUD)
