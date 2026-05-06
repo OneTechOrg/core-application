@@ -44,7 +44,7 @@ class JpaDriverRepositoryAdapterTest {
         String email = "driver-" + uniqueSuffix + "@example.com";
         String cpfValue = generateValidCpf();
         com.rappidrive.domain.entities.Driver driver = new com.rappidrive.domain.entities.Driver(
-                java.util.UUID.randomUUID(), this.tenantId, "Test Driver", new com.rappidrive.domain.valueobjects.Email(email),
+                java.util.UUID.randomUUID(), java.util.UUID.randomUUID().toString(), this.tenantId, "Test Driver", new com.rappidrive.domain.valueobjects.Email(email),
                 new com.rappidrive.domain.valueobjects.CPF(cpfValue), new com.rappidrive.domain.valueobjects.Phone("+5511999999999"), license
         );
 

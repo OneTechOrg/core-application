@@ -24,6 +24,8 @@ public interface SpringDataDriverRepository extends JpaRepository<DriverJpaEntit
     Optional<DriverJpaEntity> findByEmail(Email email);
     
     Optional<DriverJpaEntity> findByCpf(CPF cpf);
+
+    Optional<DriverJpaEntity> findByKeycloakIdAndTenantId(String keycloakId, TenantId tenantId);
     
     List<DriverJpaEntity> findByTenantId(TenantId tenantId);
     

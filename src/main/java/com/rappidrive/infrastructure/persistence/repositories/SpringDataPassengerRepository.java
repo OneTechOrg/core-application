@@ -20,6 +20,8 @@ public interface SpringDataPassengerRepository extends JpaRepository<PassengerJp
     Optional<PassengerJpaEntity> findByEmail(Email email);
     
     List<PassengerJpaEntity> findByTenantId(TenantId tenantId);
+
+    Optional<PassengerJpaEntity> findByKeycloakIdAndTenantId(String keycloakId, TenantId tenantId);
     
     List<PassengerJpaEntity> findByStatusAndTenantId(PassengerStatus status, TenantId tenantId);
     

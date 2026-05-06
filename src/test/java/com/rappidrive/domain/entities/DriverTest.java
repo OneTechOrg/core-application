@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class DriverTest {
     
     private UUID id;
+    private String keycloakId;
     private TenantId tenantId;
     private String fullName;
     private Email email;
@@ -24,6 +25,7 @@ class DriverTest {
     @BeforeEach
     void setUp() {
         id = UUID.randomUUID();
+        keycloakId = UUID.randomUUID().toString();
         tenantId = TenantId.generate();
         fullName = "João da Silva";
         email = new Email("joao.silva@example.com");
@@ -35,10 +37,11 @@ class DriverTest {
     
     @Test
     void shouldCreateDriverWithValidFields() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         
         assertNotNull(driver);
         assertEquals(id, driver.getId());
+        assertEquals(keycloakId, driver.getKeycloakId());
         assertEquals(tenantId, driver.getTenantId());
         assertEquals(fullName, driver.getFullName());
         assertEquals(email, driver.getEmail());
@@ -54,69 +57,76 @@ class DriverTest {
     @Test
     void shouldThrowExceptionWhenIdIsNull() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Driver(null, tenantId, fullName, email, cpf, phone, driverLicense)
+            new Driver(null, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense)
+        );
+    }
+
+    @Test
+    void shouldThrowExceptionWhenKeycloakIdIsNull() {
+        assertThrows(IllegalArgumentException.class, () ->
+            new Driver(id, null, tenantId, fullName, email, cpf, phone, driverLicense)
         );
     }
     
     @Test
     void shouldThrowExceptionWhenTenantIdIsNull() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Driver(id, null, fullName, email, cpf, phone, driverLicense)
+            new Driver(id, keycloakId, null, fullName, email, cpf, phone, driverLicense)
         );
     }
     
     @Test
     void shouldThrowExceptionWhenFullNameIsNull() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Driver(id, tenantId, null, email, cpf, phone, driverLicense)
+            new Driver(id, keycloakId, tenantId, null, email, cpf, phone, driverLicense)
         );
     }
     
     @Test
     void shouldThrowExceptionWhenFullNameIsBlank() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Driver(id, tenantId, "   ", email, cpf, phone, driverLicense)
+            new Driver(id, keycloakId, tenantId, "   ", email, cpf, phone, driverLicense)
         );
     }
     
     @Test
     void shouldThrowExceptionWhenEmailIsNull() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Driver(id, tenantId, fullName, null, cpf, phone, driverLicense)
+            new Driver(id, keycloakId, tenantId, fullName, null, cpf, phone, driverLicense)
         );
     }
     
     @Test
     void shouldThrowExceptionWhenCpfIsNull() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Driver(id, tenantId, fullName, email, null, phone, driverLicense)
+            new Driver(id, keycloakId, tenantId, fullName, email, null, phone, driverLicense)
         );
     }
     
     @Test
     void shouldThrowExceptionWhenPhoneIsNull() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Driver(id, tenantId, fullName, email, cpf, null, driverLicense)
+            new Driver(id, keycloakId, tenantId, fullName, email, cpf, null, driverLicense)
         );
     }
     
     @Test
     void shouldThrowExceptionWhenDriverLicenseIsNull() {
         assertThrows(IllegalArgumentException.class, () ->
-            new Driver(id, tenantId, fullName, email, cpf, phone, null)
+            new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, null)
         );
     }
     
     @Test
     void shouldTrimFullName() {
-        Driver driver = new Driver(id, tenantId, "  João da Silva  ", email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, "  João da Silva  ", email, cpf, phone, driverLicense);
         
         assertEquals("João da Silva", driver.getFullName());
     }
     
     @Test
     void shouldActivateDriverFromPendingApproval() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         
         driver.activate();
         
@@ -125,7 +135,7 @@ class DriverTest {
     
     @Test
     void shouldActivateDriverFromInactive() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         driver.deactivate();
         
@@ -136,7 +146,7 @@ class DriverTest {
     
     @Test
     void shouldThrowExceptionWhenActivatingActiveDriver() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         
         assertThrows(InvalidDriverStateException.class, driver::activate);
@@ -144,7 +154,7 @@ class DriverTest {
     
     @Test
     void shouldThrowExceptionWhenActivatingBlockedDriver() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         driver.block();
         
@@ -153,7 +163,7 @@ class DriverTest {
     
     @Test
     void shouldDeactivateActiveDriver() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         
         driver.deactivate();
@@ -163,7 +173,7 @@ class DriverTest {
     
     @Test
     void shouldClearLocationWhenDeactivating() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         driver.updateLocation(new Location(-23.550520, -46.633308));
         
@@ -174,7 +184,7 @@ class DriverTest {
     
     @Test
     void shouldThrowExceptionWhenDeactivatingInactiveDriver() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         driver.deactivate();
         
@@ -183,7 +193,7 @@ class DriverTest {
     
     @Test
     void shouldThrowExceptionWhenDeactivatingBlockedDriver() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         driver.block();
         
@@ -192,7 +202,7 @@ class DriverTest {
     
     @Test
     void shouldBlockDriver() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         
         driver.block();
@@ -202,7 +212,7 @@ class DriverTest {
     
     @Test
     void shouldClearLocationWhenBlocking() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         driver.updateLocation(new Location(-23.550520, -46.633308));
         
@@ -213,7 +223,7 @@ class DriverTest {
     
     @Test
     void shouldThrowExceptionWhenBlockingAlreadyBlockedDriver() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         driver.block();
         
@@ -222,7 +232,7 @@ class DriverTest {
     
     @Test
     void shouldUpdateLocationForActiveDriver() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         Location location = new Location(-23.550520, -46.633308);
         
@@ -234,7 +244,7 @@ class DriverTest {
     
     @Test
     void shouldThrowExceptionWhenUpdatingLocationWithNull() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         
         assertThrows(IllegalArgumentException.class, () -> 
@@ -244,7 +254,7 @@ class DriverTest {
     
     @Test
     void shouldThrowExceptionWhenUpdatingLocationForInactiveDriver() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         Location location = new Location(-23.550520, -46.633308);
         
         assertThrows(InvalidDriverStateException.class, () ->
@@ -254,7 +264,7 @@ class DriverTest {
     
     @Test
     void shouldBeAvailableWhenActiveAndHasLocation() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         driver.updateLocation(new Location(-23.550520, -46.633308));
         
@@ -263,7 +273,7 @@ class DriverTest {
     
     @Test
     void shouldNotBeAvailableWhenActiveButNoLocation() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         
         assertFalse(driver.isAvailableForRide());
@@ -271,7 +281,7 @@ class DriverTest {
     
     @Test
     void shouldNotBeAvailableWhenInactive() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         driver.updateLocation(new Location(-23.550520, -46.633308));
         driver.deactivate();
@@ -281,7 +291,7 @@ class DriverTest {
     
     @Test
     void shouldNotBeAvailableWhenBlocked() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         driver.activate();
         driver.updateLocation(new Location(-23.550520, -46.633308));
         driver.block();
@@ -293,7 +303,7 @@ class DriverTest {
     void shouldNotBeAvailableWhenLicenseExpired() {
         DriverLicense expiredLicense = new DriverLicense("12345678901", "B",
             LocalDate.of(2015, 1, 1), LocalDate.of(2020, 1, 1), true);
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, expiredLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, expiredLicense);
         driver.activate();
         driver.updateLocation(new Location(-23.550520, -46.633308));
         
@@ -302,10 +312,10 @@ class DriverTest {
     
     @Test
     void shouldBeEqualWhenSameId() {
-        Driver driver1 = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver1 = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         DriverLicense otherLicense = new DriverLicense("98765432109", "C",
             LocalDate.of(2019, 1, 1), LocalDate.of(2029, 1, 1), true);
-        Driver driver2 = new Driver(id, TenantId.generate(), "Other Name", 
+        Driver driver2 = new Driver(id, keycloakId, TenantId.generate(), "Other Name", 
             new Email("other@example.com"), new CPF("98765432100"), 
             new Phone("+5511999999999"), otherLicense);
         
@@ -315,8 +325,8 @@ class DriverTest {
     
     @Test
     void shouldNotBeEqualWhenDifferentId() {
-        Driver driver1 = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
-        Driver driver2 = new Driver(UUID.randomUUID(), tenantId, fullName, 
+        Driver driver1 = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver2 = new Driver(UUID.randomUUID(), keycloakId, tenantId, fullName, 
             email, cpf, phone, driverLicense);
         
         assertNotEquals(driver1, driver2);
@@ -324,7 +334,7 @@ class DriverTest {
     
     @Test
     void shouldHaveMeaningfulToString() {
-        Driver driver = new Driver(id, tenantId, fullName, email, cpf, phone, driverLicense);
+        Driver driver = new Driver(id, keycloakId, tenantId, fullName, email, cpf, phone, driverLicense);
         
         String str = driver.toString();
         

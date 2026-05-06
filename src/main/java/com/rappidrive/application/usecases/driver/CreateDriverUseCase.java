@@ -4,6 +4,8 @@ import com.rappidrive.application.ports.input.driver.CreateDriverInputPort;
 import com.rappidrive.application.ports.output.DriverRepositoryPort;
 import com.rappidrive.domain.entities.Driver;
 import com.rappidrive.domain.enums.DriverStatus;
+import com.rappidrive.domain.events.DriverKeycloakLinkedEvent;
+import com.rappidrive.domain.events.DomainEventsCollector;
 import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
@@ -30,6 +32,7 @@ public class CreateDriverUseCase implements CreateDriverInputPort {
         // Create driver (starts as INACTIVE)
         Driver driver = new Driver(
             UUID.randomUUID(), // Generate new UUID
+            command.keycloakId(),
             command.tenantId(),
             command.fullName(),
             command.email(),
@@ -38,6 +41,17 @@ public class CreateDriverUseCase implements CreateDriverInputPort {
             command.driverLicense()
         );
         
-        return driverRepository.save(driver);
+        Driver savedDriver = driverRepository.save(driver);
+        
+        // Publish linking event
+        DomainEventsCollector.instance().handle(
+            new DriverKeycloakLinkedEvent(
+                savedDriver.getId(),
+                savedDriver.getKeycloakId(),
+                savedDriver.getTenantId()
+            )
+        );
+        
+        return savedDriver;
     }
 }

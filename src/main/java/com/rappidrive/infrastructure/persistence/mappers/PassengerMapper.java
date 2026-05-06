@@ -21,6 +21,7 @@ public interface PassengerMapper {
         
         return new Passenger(
             entity.getId(),
+            entity.getKeycloakId(),
             entity.getTenantId(),
             entity.getFullName(),
             entity.getEmail(),
@@ -39,6 +40,7 @@ public interface PassengerMapper {
         
         PassengerJpaEntity entity = new PassengerJpaEntity();
         entity.setId(domain.getId());
+        entity.setKeycloakId(domain.getKeycloakId());
         entity.setTenantId(domain.getTenantId());
         entity.setFullName(domain.getFullName());
         entity.setEmail(domain.getEmail());
@@ -56,6 +58,7 @@ public interface PassengerMapper {
             return;
         }
         
+        entity.setKeycloakId(domain.getKeycloakId());
         entity.setTenantId(domain.getTenantId());
         entity.setFullName(domain.getFullName());
         entity.setEmail(domain.getEmail());

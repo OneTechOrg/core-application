@@ -33,9 +33,11 @@ public class DriverController {
     
     private final CreateDriverInputPort createDriverUseCase;
     private final GetDriverInputPort getDriverUseCase;
+    private final GetCurrentDriverInputPort getCurrentDriverUseCase;
     private final ActivateDriverInputPort activateDriverUseCase;
     private final UpdateDriverLocationInputPort updateDriverLocationUseCase;
     private final FindAvailableDriversInputPort findAvailableDriversUseCase;
+    private final com.rappidrive.application.ports.output.CurrentUserPort currentUserPort;
     private final DriverDtoMapper mapper;
     
     @Operation(summary = "Create a new driver")
@@ -43,6 +45,7 @@ public class DriverController {
         @ApiResponse(responseCode = "201", description = "Driver created successfully",
             content = @Content(schema = @Schema(implementation = DriverResponse.class))),
         @ApiResponse(responseCode = "400", description = "Invalid request data"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - missing Keycloak identity"),
         @ApiResponse(responseCode = "409", description = "Driver already exists with this email or CPF")
     })
     @PostMapping
@@ -51,8 +54,13 @@ public class DriverController {
         String maskedCpf = "***.***.***-" + request.cpf().substring(request.cpf().length() - 2);
         log.info("Creating driver: email={}, cpf={}", maskedEmail, maskedCpf);
         
+        String keycloakId = currentUserPort.getCurrentUser()
+            .map(u -> u.userId().toString())
+            .orElseThrow(() -> new IllegalStateException("Authenticated user required to create profile"));
+        
         CreateDriverInputPort.CreateDriverCommand command = new CreateDriverInputPort.CreateDriverCommand(
             mapper.toTenantId(request.tenantId()),
+            keycloakId,
             request.fullName(),
             mapper.toEmail(request.email()),
             mapper.toCPF(request.cpf()),
@@ -65,6 +73,20 @@ public class DriverController {
         
         log.info("Driver created successfully: id={}", driver.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Operation(summary = "Get current authenticated driver profile")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Driver profile found",
+            content = @Content(schema = @Schema(implementation = DriverResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Driver profile not found")
+    })
+    @GetMapping("/me")
+    public ResponseEntity<DriverResponse> getMe(@RequestParam UUID tenantId) {
+        log.info("Fetching current driver profile for tenant: {}", tenantId);
+        
+        Driver driver = getCurrentDriverUseCase.execute(mapper.toTenantId(tenantId));
+        return ResponseEntity.ok(mapper.toResponse(driver));
     }
     
     @Operation(summary = "Get driver by ID")

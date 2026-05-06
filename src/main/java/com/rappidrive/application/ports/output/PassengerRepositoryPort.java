@@ -64,6 +64,15 @@ public interface PassengerRepositoryPort {
      * @return true if a passenger with this email exists, false otherwise
      */
     boolean existsByEmail(Email email);
+
+    /**
+     * Finds a passenger by their external Keycloak identity ID.
+     *
+     * @param keycloakId the Keycloak user ID (sub claim)
+     * @param tenantId the tenant identifier
+     * @return an Optional containing the passenger if found, empty otherwise
+     */
+    Optional<Passenger> findByKeycloakId(String keycloakId, TenantId tenantId);
     
     /**
      * Deletes a passenger by ID.

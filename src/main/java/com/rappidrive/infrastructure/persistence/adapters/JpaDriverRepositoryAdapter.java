@@ -99,6 +99,12 @@ public class JpaDriverRepositoryAdapter implements DriverRepositoryPort, DriverG
     }
     
     @Override
+    public Optional<Driver> findByKeycloakId(String keycloakId, TenantId tenantId) {
+        return jpaRepository.findByKeycloakIdAndTenantId(keycloakId, tenantId)
+            .map(mapper::toDomain);
+    }
+    
+    @Override
     public void delete(UUID id) {
         jpaRepository.deleteById(id);
     }

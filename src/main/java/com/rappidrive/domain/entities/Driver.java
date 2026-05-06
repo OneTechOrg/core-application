@@ -21,6 +21,7 @@ import java.util.UUID;
 public class Driver {
     
     private final UUID id;
+    private final String keycloakId;
     private final TenantId tenantId;
     private final String fullName;
     private final Email email;
@@ -37,6 +38,7 @@ public class Driver {
      * Driver starts in PENDING_APPROVAL status.
      * 
      * @param id unique identifier
+     * @param keycloakId external identity identifier
      * @param tenantId tenant identifier for multi-tenancy
      * @param fullName driver's full name
      * @param email driver's email
@@ -45,10 +47,13 @@ public class Driver {
      * @param driverLicense driver's CNH
      * @throws IllegalArgumentException if any required field is null
      */
-    public Driver(UUID id, TenantId tenantId, String fullName, Email email, 
+    public Driver(UUID id, String keycloakId, TenantId tenantId, String fullName, Email email, 
                   CPF cpf, Phone phone, DriverLicense driverLicense) {
         if (id == null) {
             throw new IllegalArgumentException("Driver ID cannot be null");
+        }
+        if (keycloakId == null || keycloakId.isBlank()) {
+            throw new IllegalArgumentException("Keycloak ID cannot be null or empty");
         }
         if (tenantId == null) {
             throw new IllegalArgumentException("Tenant ID cannot be null");
@@ -70,6 +75,7 @@ public class Driver {
         }
         
         this.id = id;
+        this.keycloakId = keycloakId;
         this.tenantId = tenantId;
         this.fullName = fullName.trim();
         this.email = email;
@@ -86,10 +92,11 @@ public class Driver {
      * Reconstruction constructor for persistence layer.
      * Used by infrastructure adapters to recreate domain entities from storage.
      */
-    public Driver(UUID id, TenantId tenantId, String fullName, Email email,
+    public Driver(UUID id, String keycloakId, TenantId tenantId, String fullName, Email email,
                   CPF cpf, Phone phone, DriverLicense driverLicense,
                   DriverStatus status, Location currentLocation) {
         this.id = id;
+        this.keycloakId = keycloakId;
         this.tenantId = tenantId;
         this.fullName = fullName;
         this.email = email;
@@ -218,6 +225,10 @@ public class Driver {
     
     public UUID getId() {
         return id;
+    }
+    
+    public String getKeycloakId() {
+        return keycloakId;
     }
     
     public TenantId getTenantId() {

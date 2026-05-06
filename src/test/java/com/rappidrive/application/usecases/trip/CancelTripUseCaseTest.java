@@ -112,6 +112,7 @@ class CancelTripUseCaseTest {
         );
         Driver driver = new Driver(
             driverId,
+            UUID.randomUUID().toString(),
             tenantId,
             "Driver",
             new Email("driver.cancel@test.com"),

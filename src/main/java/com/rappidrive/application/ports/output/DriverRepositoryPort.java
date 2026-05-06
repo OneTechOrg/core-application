@@ -83,6 +83,15 @@ public interface DriverRepositoryPort {
     boolean existsByCpf(CPF cpf);
     
     /**
+     * Finds a driver by their external Keycloak identity ID.
+     *
+     * @param keycloakId the Keycloak user ID (sub claim)
+     * @param tenantId the tenant identifier
+     * @return an Optional containing the driver if found, empty otherwise
+     */
+    Optional<Driver> findByKeycloakId(String keycloakId, TenantId tenantId);
+    
+    /**
      * Deletes a driver by ID.
      *
      * @param id the driver ID to delete

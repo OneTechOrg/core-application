@@ -23,6 +23,7 @@ public interface CreatePassengerInputPort {
      */
     record CreatePassengerCommand(
         TenantId tenantId,
+        String keycloakId,
         String fullName,
         Email email,
         Phone phone

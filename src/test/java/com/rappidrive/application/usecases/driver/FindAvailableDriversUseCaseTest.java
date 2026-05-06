@@ -86,6 +86,7 @@ class FindAvailableDriversUseCaseTest {
         );
         activeDriver = new Driver(
             UUID.randomUUID(),
+            UUID.randomUUID().toString(),
             tenantId,
             "Active Driver",
             new Email("active@example.com"),
@@ -99,6 +100,7 @@ class FindAvailableDriversUseCaseTest {
         // Inactive driver (should be filtered out)
         inactiveDriver = new Driver(
             UUID.randomUUID(),
+            UUID.randomUUID().toString(),
             tenantId,
             "Inactive Driver",
             new Email("inactive@example.com"),
@@ -112,6 +114,7 @@ class FindAvailableDriversUseCaseTest {
         // Driver without location (should be filtered out)
         driverWithoutLocation = new Driver(
             UUID.randomUUID(),
+            UUID.randomUUID().toString(),
             tenantId,
             "No Location Driver",
             new Email("noloc@example.com"),
@@ -131,6 +134,7 @@ class FindAvailableDriversUseCaseTest {
         );
         driverWithExpiredCNH = new Driver(
             UUID.randomUUID(),
+            UUID.randomUUID().toString(),
             tenantId,
             "Expired CNH Driver",
             new Email("expired@example.com"),

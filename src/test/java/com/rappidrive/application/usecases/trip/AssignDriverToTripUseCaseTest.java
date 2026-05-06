@@ -74,7 +74,7 @@ class AssignDriverToTripUseCaseTest {
 
     private Driver buildAvailableDriver(UUID id) {
         DriverLicense license = new DriverLicense("12345678901", "B", LocalDate.now().minusYears(5), LocalDate.now().plusYears(5), true);
-        Driver driver = new Driver(id, TenantId.generate(), "Test Driver", new Email("driver@example.com"), new CPF("12345678909"), new Phone("+5511999999999"), license);
+        Driver driver = new Driver(id, UUID.randomUUID().toString(), TenantId.generate(), "Test Driver", new Email("driver@example.com"), new CPF("12345678909"), new Phone("+5511999999999"), license);
         // Make the driver active and set a current location so isAvailableForRide() returns true
         driver.activate();
         driver.updateLocation(new com.rappidrive.domain.valueobjects.Location(-23.55, -46.63));
@@ -147,7 +147,7 @@ class AssignDriverToTripUseCaseTest {
         Trip trip = buildPendingTrip(tripId, passengerId, origin, destination);
         // Build driver with expired license -> not available
         DriverLicense expired = new DriverLicense("12345678901", "B", LocalDate.now().minusYears(10), LocalDate.now().minusYears(1), true);
-        Driver driver = new Driver(driverId.getValue(), TenantId.generate(), "Driver", new Email("drv@example.com"), new CPF("12345678909"), new Phone("+5511999999999"), expired);
+        Driver driver = new Driver(driverId.getValue(), UUID.randomUUID().toString(), TenantId.generate(), "Driver", new Email("drv@example.com"), new CPF("12345678909"), new Phone("+5511999999999"), expired);
 
         when(tripRepository.findById(tripId.getValue())).thenReturn(Optional.of(trip));
         when(driverRepository.findById(driverId.getValue())).thenReturn(Optional.of(driver));

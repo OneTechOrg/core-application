@@ -163,6 +163,7 @@ class ConnectionPoolLoadTest {
         
         return new Driver(
             UUID.randomUUID(),
+            UUID.randomUUID().toString(),
             tenantId,
             "Load Test Driver " + id,
             new Email("driver" + id + "@loadtest.com"),

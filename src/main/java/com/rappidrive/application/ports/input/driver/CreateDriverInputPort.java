@@ -21,6 +21,7 @@ public interface CreateDriverInputPort {
      */
     record CreateDriverCommand(
         TenantId tenantId,
+        String keycloakId,
         String fullName,
         Email email,
         CPF cpf,

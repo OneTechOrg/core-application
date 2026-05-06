@@ -74,6 +74,12 @@ public class JpaPassengerRepositoryAdapter implements PassengerRepositoryPort {
     public boolean existsByEmail(Email email) {
         return jpaRepository.existsByEmail(email);
     }
+
+    @Override
+    public Optional<Passenger> findByKeycloakId(String keycloakId, TenantId tenantId) {
+        return jpaRepository.findByKeycloakIdAndTenantId(keycloakId, tenantId)
+            .map(mapper::toDomain);
+    }
     
     @Override
     public void delete(UUID id) {

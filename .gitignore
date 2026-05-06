@@ -1,3 +1,6 @@
+# Brainstorming companion
+.superpowers/
+
 # Build artifacts
 target/
 !.mvn/wrapper/maven-wrapper.jar

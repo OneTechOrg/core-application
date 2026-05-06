@@ -17,6 +17,7 @@ import java.util.UUID;
 public class Passenger {
     
     private final UUID id;
+    private final String keycloakId;
     private final TenantId tenantId;
     private final String fullName;
     private final Email email;
@@ -30,16 +31,20 @@ public class Passenger {
      * Passenger starts in ACTIVE status.
      * 
      * @param id unique identifier
+     * @param keycloakId external identity identifier
      * @param tenantId tenant identifier for multi-tenancy
      * @param fullName passenger's full name
      * @param email passenger's email
      * @param phone passenger's phone
      * @throws IllegalArgumentException if any required field is null
      */
-    public Passenger(UUID id, TenantId tenantId, String fullName, 
+    public Passenger(UUID id, String keycloakId, TenantId tenantId, String fullName, 
                      Email email, Phone phone) {
         if (id == null) {
             throw new IllegalArgumentException("Passenger ID cannot be null");
+        }
+        if (keycloakId == null || keycloakId.isBlank()) {
+            throw new IllegalArgumentException("Keycloak ID cannot be null or empty");
         }
         if (tenantId == null) {
             throw new IllegalArgumentException("Tenant ID cannot be null");
@@ -55,6 +60,7 @@ public class Passenger {
         }
         
         this.id = id;
+        this.keycloakId = keycloakId;
         this.tenantId = tenantId;
         this.fullName = fullName.trim();
         this.email = email;
@@ -69,15 +75,17 @@ public class Passenger {
      * Used to rebuild passenger objects from the database with all fields.
      * 
      * @param id unique identifier
+     * @param keycloakId external identity identifier
      * @param tenantId tenant identifier
      * @param fullName passenger's full name
      * @param email passenger's email
      * @param phone passenger's phone
      * @param status current passenger status
      */
-    public Passenger(UUID id, TenantId tenantId, String fullName, 
+    public Passenger(UUID id, String keycloakId, TenantId tenantId, String fullName, 
                      Email email, Phone phone, PassengerStatus status) {
         this.id = id;
+        this.keycloakId = keycloakId;
         this.tenantId = tenantId;
         this.fullName = fullName;
         this.email = email;
@@ -146,6 +154,10 @@ public class Passenger {
     
     public UUID getId() {
         return id;
+    }
+    
+    public String getKeycloakId() {
+        return keycloakId;
     }
     
     public TenantId getTenantId() {

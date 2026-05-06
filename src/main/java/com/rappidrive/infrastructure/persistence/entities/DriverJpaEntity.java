@@ -26,6 +26,7 @@ public class DriverJpaEntity {
     public DriverJpaEntity() {}
 
     public DriverJpaEntity(UUID id,
+                           String keycloakId,
                            TenantId tenantId,
                            String fullName,
                            Email email,
@@ -42,6 +43,7 @@ public class DriverJpaEntity {
                            LocalDateTime createdAt,
                            LocalDateTime updatedAt) {
         this.id = id;
+        this.keycloakId = keycloakId;
         this.tenantId = tenantId;
         this.fullName = fullName;
         this.email = email;
@@ -62,6 +64,9 @@ public class DriverJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Column(name = "keycloak_id", unique = true)
+    private String keycloakId;
     
     @Column(name = "tenant_id", nullable = false)
     private TenantId tenantId;
@@ -125,6 +130,14 @@ public class DriverJpaEntity {
     // Explicit getters to ensure methods are available during compilation
     public UUID getId() {
         return this.id;
+    }
+
+    public String getKeycloakId() {
+        return this.keycloakId;
+    }
+
+    public void setKeycloakId(String keycloakId) {
+        this.keycloakId = keycloakId;
     }
 
     public TenantId getTenantId() {

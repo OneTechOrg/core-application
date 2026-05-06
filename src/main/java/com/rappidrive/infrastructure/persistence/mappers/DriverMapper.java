@@ -35,6 +35,7 @@ public interface DriverMapper {
         
         return new Driver(
             entity.getId(),
+            entity.getKeycloakId(),
             entity.getTenantId(),
             entity.getFullName(),
             entity.getEmail(),

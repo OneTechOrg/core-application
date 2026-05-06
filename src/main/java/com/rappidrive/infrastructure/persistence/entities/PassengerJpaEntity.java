@@ -24,6 +24,7 @@ public class PassengerJpaEntity {
     public PassengerJpaEntity() {}
 
     public PassengerJpaEntity(UUID id,
+                              String keycloakId,
                               TenantId tenantId,
                               String fullName,
                               Email email,
@@ -32,6 +33,7 @@ public class PassengerJpaEntity {
                               LocalDateTime createdAt,
                               LocalDateTime updatedAt) {
         this.id = id;
+        this.keycloakId = keycloakId;
         this.tenantId = tenantId;
         this.fullName = fullName;
         this.email = email;
@@ -44,6 +46,9 @@ public class PassengerJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Column(name = "keycloak_id", unique = true)
+    private String keycloakId;
     
     @Column(name = "tenant_id", nullable = false)
     private TenantId tenantId;
@@ -81,6 +86,9 @@ public class PassengerJpaEntity {
     // Explicit getters/setters for mappers
     public UUID getId() { return this.id; }
     public void setId(UUID id) { this.id = id; }
+
+    public String getKeycloakId() { return this.keycloakId; }
+    public void setKeycloakId(String k) { this.keycloakId = k; }
 
     public TenantId getTenantId() { return this.tenantId; }
     public void setTenantId(TenantId t) { this.tenantId = t; }

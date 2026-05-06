@@ -4,6 +4,8 @@ import com.rappidrive.application.ports.input.passenger.CreatePassengerInputPort
 import com.rappidrive.application.ports.output.PassengerRepositoryPort;
 import com.rappidrive.domain.entities.Passenger;
 import com.rappidrive.domain.enums.PassengerStatus;
+import com.rappidrive.domain.events.PassengerKeycloakLinkedEvent;
+import com.rappidrive.domain.events.DomainEventsCollector;
 import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
@@ -26,12 +28,24 @@ public class CreatePassengerUseCase implements CreatePassengerInputPort {
         // Create passenger (starts as INACTIVE)
         Passenger passenger = new Passenger(
             UUID.randomUUID(), // Generate ID
+            command.keycloakId(),
             command.tenantId(),
             command.fullName(),
             command.email(),
             command.phone()
         );
         
-        return passengerRepository.save(passenger);
+        Passenger savedPassenger = passengerRepository.save(passenger);
+        
+        // Publish linking event
+        DomainEventsCollector.instance().handle(
+            new PassengerKeycloakLinkedEvent(
+                savedPassenger.getId(),
+                savedPassenger.getKeycloakId(),
+                savedPassenger.getTenantId()
+            )
+        );
+        
+        return savedPassenger;
     }
 }
