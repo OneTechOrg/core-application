@@ -54,6 +54,7 @@ class DriverRegistrationE2ETest {
         RestAssured.basePath = "";
         
         // Clean up any existing test data first
+        jdbcTemplate.update("DELETE FROM driver_approvals");
         jdbcTemplate.update("DELETE FROM drivers");
         jdbcTemplate.update("DELETE FROM tenants");
         
@@ -67,6 +68,7 @@ class DriverRegistrationE2ETest {
     @AfterEach
     void tearDown() {
         // Clean up test data after each test
+        jdbcTemplate.update("DELETE FROM driver_approvals");
         jdbcTemplate.update("DELETE FROM drivers");
         jdbcTemplate.update("DELETE FROM tenants");
     }
@@ -87,7 +89,8 @@ class DriverRegistrationE2ETest {
                 "2020-01-01",
                 "2030-01-01",
                 true
-            )
+            ),
+            java.util.List.of("https://docs.com/cnh.jpg")
         );
 
         // When & Then: POST request should return 201 with driver data
@@ -128,7 +131,8 @@ class DriverRegistrationE2ETest {
                 "2020-01-01",
                 "2030-01-01",
                 true
-            )
+            ),
+            java.util.List.of("https://docs.com/cnh.jpg")
         );
 
         // When & Then: POST request should return 400
@@ -158,7 +162,8 @@ class DriverRegistrationE2ETest {
                 "2020-01-01",
                 "2030-01-01",
                 true
-            )
+            ),
+            java.util.List.of("https://docs.com/cnh.jpg")
         );
 
         // When & Then: POST request should return 400
@@ -190,7 +195,8 @@ class DriverRegistrationE2ETest {
                 "2020-01-01",
                 "2030-01-01",
                 true
-            )
+            ),
+            java.util.List.of("https://docs.com/cnh.jpg")
         );
 
         var firstResponse = given()
@@ -219,7 +225,8 @@ class DriverRegistrationE2ETest {
                 "2020-01-01",
                 "2030-01-01",
                 true
-            )
+            ),
+            java.util.List.of("https://docs.com/cnh.jpg")
         );
 
         // Then: Should return HTTP 400 (duplicate detected)
@@ -251,7 +258,8 @@ class DriverRegistrationE2ETest {
                 "2020-01-01",
                 "2030-01-01",
                 true
-            )
+            ),
+            java.util.List.of("https://docs.com/cnh.jpg")
         );
 
         var firstResponse = given()
@@ -280,7 +288,8 @@ class DriverRegistrationE2ETest {
                 "2020-01-01",
                 "2030-01-01",
                 true
-            )
+            ),
+            java.util.List.of("https://docs.com/cnh.jpg")
         );
 
         // Then: Should return HTTP 409 Conflict
@@ -316,7 +325,8 @@ class DriverRegistrationE2ETest {
                 "2020-01-01",
                 "2030-01-01",
                 true
-            )
+            ),
+            java.util.List.of("https://docs.com/cnh.jpg")
         );
 
         var createResponse = given()
@@ -397,15 +407,18 @@ class DriverRegistrationE2ETest {
         public String cpf;
         public String phone;
         public DriverLicensePayload driverLicense;
+        public java.util.List<String> documentUrls;
 
         public CreateDriverPayload(String tenantId, String fullName, String email,
-                                  String cpf, String phone, DriverLicensePayload driverLicense) {
+                                  String cpf, String phone, DriverLicensePayload driverLicense,
+                                  java.util.List<String> documentUrls) {
             this.tenantId = tenantId;
             this.fullName = fullName;
             this.email = email;
             this.cpf = cpf;
             this.phone = phone;
             this.driverLicense = driverLicense;
+            this.documentUrls = documentUrls;
         }
     }
 

@@ -67,29 +67,17 @@ class ApprovalE2ETest {
     void shouldSubmitListAndApprove() {
         String driverId = createDriver();
 
-        // Submit approval
-        SubmitApprovalPayload submitPayload = new SubmitApprovalPayload(driverId, List.of("doc1", "doc2"));
-        var submitResponse = given()
-            .contentType(ContentType.JSON)
-            .body(submitPayload)
-            .when()
-            .post("/api/v1/admin/approvals")
-            .then()
-            .statusCode(201)
-            .body("status", equalTo("PENDING"))
-            .extract();
-
-        String approvalId = submitResponse.path("approvalId");
-
-        // List pending approvals
-        given()
+        // List pending approvals (one should have been created automatically)
+        var listResponse = given()
             .when()
             .get("/api/v1/admin/approvals/pending?adminId={adminId}&page=0&size=10", adminId)
             .then()
             .statusCode(200)
             .body("approvals.size()", equalTo(1))
-            .body("approvals[0].approvalId", equalTo(approvalId))
-            .body("approvals[0].driverId", equalTo(driverId));
+            .body("approvals[0].driverId", equalTo(driverId))
+            .extract();
+
+        String approvalId = listResponse.path("approvals[0].approvalId");
 
         // Approve
         ApprovePayload approvePayload = new ApprovePayload(adminId);
@@ -119,7 +107,8 @@ class ApprovalE2ETest {
             "ana.driver@example.com",
             "52998224725",
             "+5511987654321",
-            new DriverLicensePayload("96580714537", "B", "2020-01-01", "2030-01-01", true)
+            new DriverLicensePayload("96580714537", "B", "2020-01-01", "2030-01-01", true),
+            List.of("https://docs.com/cnh.jpg")
         );
 
         var response = given()
@@ -144,7 +133,8 @@ class ApprovalE2ETest {
         String email,
         String cpf,
         String phone,
-        DriverLicensePayload driverLicense
+        DriverLicensePayload driverLicense,
+        List<String> documentUrls
     ) {}
 
     private record DriverLicensePayload(

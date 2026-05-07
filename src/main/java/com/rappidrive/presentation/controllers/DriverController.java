@@ -55,8 +55,8 @@ public class DriverController {
         log.info("Creating driver: email={}, cpf={}", maskedEmail, maskedCpf);
         
         String keycloakId = currentUserPort.getCurrentUser()
-            .map(u -> u.userId().toString())
-            .orElseThrow(() -> new IllegalStateException("Authenticated user required to create profile"));
+            .map(u -> u.userId() != null ? u.userId().toString() : "anonymous")
+            .orElse("anonymous");
         
         CreateDriverInputPort.CreateDriverCommand command = new CreateDriverInputPort.CreateDriverCommand(
             mapper.toTenantId(request.tenantId()),
@@ -65,13 +65,14 @@ public class DriverController {
             mapper.toEmail(request.email()),
             mapper.toCPF(request.cpf()),
             mapper.toPhone(request.phone()),
-            mapper.toDriverLicense(request.driverLicense())
+            mapper.toDriverLicense(request.driverLicense()),
+            request.documentUrls()
         );
         
         Driver driver = createDriverUseCase.execute(command);
         DriverResponse response = mapper.toResponse(driver);
         
-        log.info("Driver created successfully: id={}", driver.getId());
+        log.info("Driver created successfully with approval request: id={}", driver.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -102,24 +103,6 @@ public class DriverController {
         Driver driver = getDriverUseCase.execute(id);
         DriverResponse response = mapper.toResponse(driver);
         
-        return ResponseEntity.ok(response);
-    }
-    
-    @Operation(summary = "Activate driver")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Driver activated successfully",
-            content = @Content(schema = @Schema(implementation = DriverResponse.class))),
-        @ApiResponse(responseCode = "404", description = "Driver not found"),
-        @ApiResponse(responseCode = "409", description = "Invalid driver state for activation")
-    })
-    @PutMapping("/{id}/activate")
-    public ResponseEntity<DriverResponse> activateDriver(@PathVariable UUID id) {
-        log.info("Activating driver: id={}", id);
-        
-        Driver driver = activateDriverUseCase.execute(id);
-        DriverResponse response = mapper.toResponse(driver);
-        
-        log.info("Driver activated successfully: id={}", id);
         return ResponseEntity.ok(response);
     }
     

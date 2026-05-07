@@ -49,13 +49,20 @@ public class UseCaseConfiguration {
     // Driver Use Cases
     
     @Bean
-    public CreateDriverInputPort createDriverUseCase(DriverRepositoryPort driverRepository) {
-        return new CreateDriverUseCase(driverRepository);
+    public CreateDriverInputPort createDriverUseCase(DriverRepositoryPort driverRepository,
+                                                     DriverApprovalRepositoryPort approvalRepository) {
+        return new CreateDriverUseCase(driverRepository, approvalRepository);
     }
     
     @Bean
     public GetDriverInputPort getDriverUseCase(DriverRepositoryPort driverRepository) {
         return new GetDriverUseCase(driverRepository);
+    }
+    
+    @Bean
+    public GetCurrentDriverInputPort getCurrentDriverUseCase(DriverRepositoryPort driverRepository,
+                                                             CurrentUserPort currentUserPort) {
+        return new GetCurrentDriverUseCase(driverRepository, currentUserPort);
     }
     
     @Bean
@@ -87,6 +94,12 @@ public class UseCaseConfiguration {
     @Bean
     public GetPassengerInputPort getPassengerUseCase(PassengerRepositoryPort passengerRepository) {
         return new GetPassengerUseCase(passengerRepository);
+    }
+    
+    @Bean
+    public GetCurrentPassengerInputPort getCurrentPassengerUseCase(PassengerRepositoryPort passengerRepository,
+                                                                   CurrentUserPort currentUserPort) {
+        return new GetCurrentPassengerUseCase(passengerRepository, currentUserPort);
     }
     
     // Trip Use Cases

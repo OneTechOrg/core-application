@@ -51,5 +51,10 @@ public record CreateDriverRequest(
     @NotNull(message = "Driver license is required")
     @Valid
     @JsonProperty("driverLicense")
-    DriverLicenseDto driverLicense
+    DriverLicenseDto driverLicense,
+
+    @Schema(description = "URLs for driver documents (CNH, CRLV, etc.)", example = "[\"https://docs.com/cnh.jpg\"]", required = true)
+    @jakarta.validation.constraints.NotEmpty(message = "At least one document URL is required")
+    @JsonProperty("documentUrls")
+    java.util.List<@jakarta.validation.constraints.NotBlank String> documentUrls
 ) {}

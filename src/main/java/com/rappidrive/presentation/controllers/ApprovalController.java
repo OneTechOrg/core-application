@@ -36,16 +36,6 @@ public class ApprovalController {
         this.mapper = mapper;
     }
 
-    @PostMapping
-    public ResponseEntity<SubmitApprovalResponse> submit(@RequestBody SubmitApprovalRequest request) {
-        var command = new SubmitDriverApprovalInputPort.SubmitDriverApprovalCommand(
-            UUID.fromString(request.driverId()),
-            request.documentUrls()
-        );
-        var response = submitUseCase.execute(command);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new SubmitApprovalResponse(response.approvalRequestId().toString(), response.status()));
-    }
-
     @GetMapping("/pending")
     public ResponseEntity<PendingApprovalsPageResponse> list(
             @RequestParam(required = false) UUID adminId,

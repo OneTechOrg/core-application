@@ -26,6 +26,7 @@ public interface CreateDriverInputPort {
         Email email,
         CPF cpf,
         Phone phone,
-        DriverLicense driverLicense
+        DriverLicense driverLicense,
+        java.util.List<String> documentUrls
     ) {}
 }
