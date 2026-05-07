@@ -6,6 +6,7 @@
 - Para visão rápida: consulte o resumo em [HIST-2026-012-RESUMO-PT.md](HIST-2026-012-RESUMO-PT.md) e os diagramas em [HIST-2026-012-DIAGRAMS.md](HIST-2026-012-DIAGRAMS.md).
 
 ## [ACTIVE] Documentos vigentes (2026)
+- [HIST-2026-041.md](HIST-2026-041.md) — Upgrade para Spring Boot 3.4.5: unificação de segurança e correções Hibernate 6.6
 - [HIST-2026-040.md](HIST-2026-040.md) — Vinculação Keycloak ao perfil MVP: keycloakId em Driver/Passenger, /me endpoints, Keycloak Admin opcional
 - [HIST-2026-039.md](HIST-2026-039.md) — Fechamento do loop de notificações de corrida: TRIP_ACCEPTED, TRIP_STARTED, TRIP_COMPLETED, TRIP_CANCELLED
 - [HIST-2026-038.md](HIST-2026-038.md) — Push notifications via Firebase Admin SDK (FCM): substituir StubNotificationServiceAdapter

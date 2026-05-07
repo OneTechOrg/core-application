@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**RappiDrive** is a white-label ride-hailing platform (MVP) built in **Java 21 + Spring Boot 3.2.1** following strict **Hexagonal Architecture** (Ports & Adapters). Multi-tenancy is a first-class concern — every aggregate root carries a `TenantId`.
+**RappiDrive** is a white-label ride-hailing platform (MVP) built in **Java 21 + Spring Boot 3.4.5** following strict **Hexagonal Architecture** (Ports & Adapters). Multi-tenancy is a first-class concern — every aggregate root carries a `TenantId`.
 
 ---
 
@@ -35,7 +35,7 @@ mvn failsafe:integration-test -Dit.test=TripRepositoryIT
 
 **Prerequisites:**
 - Java 21 (LTS) — required for virtual threads
-- Maven 3.8+
+- Maven 3.8+ (Compiler args: `-parameters` required for record mapping)
 - Docker — required for `mvn verify` (Testcontainers spins up PostgreSQL + Keycloak)
 - `docker-compose up -d` starts PostgreSQL 16 + PostGIS at `localhost:5432` and pgAdmin at `localhost:5050`
 
@@ -98,6 +98,18 @@ These are enforced at build time by ArchUnit. Breaking them causes test failures
 | JPA entity | `{Entity}JpaEntity` | `DriverJpaEntity` |
 | DTO | `{Entity}{Action}Request` / `{Entity}Response` | `CreateTripRequest`, `TripResponse` |
 
+### Persistence & Hibernate 6.6+
+
+- **Manual UUIDs**: Entities that assign IDs in the domain layer MUST NOT use `@GeneratedValue` in their JPA counterparts. Hibernate 6.6+ will throw `StaleObjectStateException` if it detects a manually assigned ID on a "new" entity with a generation strategy.
+- **Flyway 10**: Uses modular database drivers. Ensure `flyway-database-postgresql` is in `pom.xml`.
+
+### Security Configuration
+
+Security is unified in `SecurityConfiguration.java`. Behavior is toggled via properties, NOT multiple conflicting `SecurityFilterChain` beans:
+- `rappidrive.security.enabled`: Set to `false` in `dev` to disable security.
+- `rappidrive.security.test-mode`: Set to `true` in `test`/`e2e` to bypass auth in automated tests.
+- **NEVER** create separate `TestSecurityConfiguration` classes; they cause bean conflicts in Spring Boot 3.4+.
+
 ### Domain Events & Outbox Pattern
 
 Domain entities emit events via `DomainEventsCollector.collect(event)`. Events are persisted to `outbox_event` table in the same transaction, then `OutboxEventProcessor` dispatches them asynchronously (every 1 second, batch of 50, up to 5 retries). Key classes: `DomainEvent`, `OutboxPublisher`, `EventDispatcherPort`, `OutboxEventProcessor`.
@@ -128,7 +140,8 @@ Driver geolocation uses `ST_DWithin()` with KNN (`<->`) operator and a GIST inde
 
 | Type | Base class | HTTP mapping |
 |---|---|---|
-| Business rule violation | `DomainException` | 400 / 409 |
+| Business rule violation | `DomainException` | 400 |
+| Entity already exists | `EntityAlreadyExistsException` | 409 |
 | Entity not found | `DomainException` subtype | 404 |
 | Application logic error | `ApplicationException` | 400 |
 | Infrastructure error | Wrapped at adapter boundary | 500 |
@@ -180,11 +193,11 @@ For multi-step tasks, state a brief plan with a concrete verify step for each st
 | Domain & use case unit tests | `src/test/.../domain/`, `.../application/` | JUnit 5 + Mockito (mock output ports) |
 | Infrastructure integration tests | `src/test/.../infrastructure/` | Testcontainers (real PostgreSQL + PostGIS) |
 | E2E / API tests | `src/test/.../e2e/` | `@SpringBootTest` + REST Assured |
-| Architecture constraints | `src/test/.../architecture/HexagonalArchitectureTest.java` | ArchUnit (24 rules) |
+| Architecture tests | `src/test/.../architecture/HexagonalArchitectureTest.java` | ArchUnit (24 rules) |
 
 - Test files ending in `*Test.java` → run via Surefire (`mvn test`)
 - Test files ending in `*IT.java` → run via Failsafe (`mvn verify`), require Docker
-- `NoSecurityConfiguration` and `TestSecurityConfiguration` control auth in test profiles
+- Mutual exclusivity of security modes is guaranteed by `SecurityConfiguration` logic.
 
 ---
 
@@ -193,14 +206,14 @@ For multi-step tasks, state a brief plan with a concrete verify step for each st
 | Concern | Technology |
 |---|---|
 | Language / Runtime | Java 21, virtual threads |
-| Framework | Spring Boot 3.2.1 |
+| Framework | Spring Boot 3.4.5, Spring Cloud 2024.0.0 |
 | Database | PostgreSQL 16 + PostGIS 3.4 |
-| ORM / Migrations | Hibernate + Flyway (`src/main/resources/db/migration/`) |
+| ORM / Migrations | Hibernate 6.6 + Flyway 10 (`src/main/resources/db/migration/`) |
 | Auth | Keycloak 23 (OAuth2/OIDC resource server) |
-| Mapping | MapStruct 1.5.5 |
-| Boilerplate | Lombok 1.18.30 (infrastructure/presentation only) |
+| Mapping | MapStruct 1.6.2 |
+| Boilerplate | Lombok 1.18.34 (infrastructure/presentation only) |
 | Caching | Caffeine (`CacheConfiguration.java`) |
 | Resilience | Resilience4j Circuit Breaker (payment gateway) |
 | Metrics | Micrometer → Prometheus |
 | Tracing | OpenTelemetry → Zipkin |
-| Docs | SpringDoc OpenAPI 2.3.0 (`/swagger-ui.html`) |
+| Docs | SpringDoc OpenAPI 2.8.1 (`/swagger-ui.html`) |

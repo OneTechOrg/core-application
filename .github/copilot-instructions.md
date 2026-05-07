@@ -4,7 +4,7 @@
 
 **RappiDrive** is a white-label ride-hailing platform (Uber-like business model) MVP built with **Hexagonal Architecture** (Ports & Adapters).
 
-**Current State (as of January 2026):**
+**Current State (as of May 2026):**
 - ✅ Full hexagonal architecture scaffold complete
 - ✅ Core entities implemented: `Driver`, `Passenger`, `Trip`, `Vehicle`, `Payment`, `Rating`, `Notification`
 - ✅ 20+ use cases across driver, trip, payment, rating domains
@@ -13,6 +13,7 @@
 - ✅ Parallel query execution using `ParallelExecutor` utility
 - ✅ PostGIS integration for geospatial driver queries (>10K drivers, <50ms queries)
 - ✅ Comprehensive test coverage (unit, integration, E2E, architecture tests)
+- ✅ Upgraded to **Spring Boot 3.4.5** and **Spring Cloud 2024.0.0**
 
 **Key Characteristics:**
 - **Multi-tenancy**: All aggregates include `TenantId` for data isolation
@@ -59,7 +60,7 @@ Dependencies flow **inward only**: Infrastructure → Application → Domain. Do
 ### Package Structure
 ```
 src/main/java/com/rappidrive/
-├── domain/                    # Business entities and logic (framework-free)
+├── domain/                    # Business logic (framework-free)
 │   ├── entities/              # Domain entities
 │   ├── valueobjects/          # Value objects (Email, CPF, Money, etc.)
 │   ├── services/              # Domain services
@@ -95,7 +96,7 @@ Each use case should:
 2. Depend only on output ports (constructor injection)
 3. Return domain entities or custom response objects
 4. Handle a single business operation
-5. Be annotated with `@UseCase` (custom annotation) or `@Service` in infrastructure layer
+5. Be annotated with `@UseCase` (custom annotation) or declared as `@Bean` in infrastructure layer
 
 Example:
 ```java
@@ -133,45 +134,20 @@ public class CreateUserUseCase implements CreateUserInputPort {
 - Adapters convert between JPA entities and domain entities
 - Use Spring Data JPA in adapters, never expose JPA annotations to domain
 
-Example:
-```java
-// application/ports/output/UserRepositoryPort.java
-public interface UserRepositoryPort {
-    User save(User user);
-    Optional<User> findById(UserId id);
-    Optional<User> findByEmail(Email email);
-}
-
-// infrastructure/persistence/JpaUserRepositoryAdapter.java
-@Component
-public class JpaUserRepositoryAdapter implements UserRepositoryPort {
-    private final SpringDataUserRepository jpaRepository;
-    private final UserMapper mapper;
-    
-    @Override
-    public User save(User user) {
-        UserJpaEntity entity = mapper.toJpaEntity(user);
-        UserJpaEntity saved = jpaRepository.save(entity);
-        return mapper.toDomain(saved);
-    }
-}
-```
-
 ### Error Handling
 - **Domain exceptions**: Extend `DomainException` (unchecked), placed in `domain/exceptions/`
-  - Examples: `InvalidEmailException`, `UserNotFoundException`, `InsufficientBalanceException`
+  - Examples: `InvalidEmailException`, `UserNotFoundException`, `EntityAlreadyExistsException` (409)
 - **Application exceptions**: Use case specific, extend `ApplicationException`
 - **Infrastructure exceptions**: Wrap external errors at adapter boundaries (never leak JPA/HTTP exceptions)
-- Use `@ControllerAdvice` in presentation layer to handle exceptions globally
-- Return proper HTTP status codes: 400 for validation, 404 for not found, 409 for conflicts, 500 for unexpected errors
+- Use `@RestControllerAdvice` in presentation layer to handle exceptions globally
+- Return proper HTTP status codes: 400 for validation/rules, 404 for not found, 409 for conflicts, 500 for unexpected errors
 
 ## Development Workflows
 
 ### Prerequisites & Setup
 - **Java**: 21+ (LTS) - Required for virtual threads
-- **Build**: Maven 3.8+
+- **Build**: Maven 3.8+ (Compiler args: `-parameters` mandatory)
 - **Database**: PostgreSQL 16 + PostGIS 3.4 (via Docker)
-- **Start DB**: `docker-compose up -d` (starts PostgreSQL at localhost:5432 + pgAdmin at localhost:5050)
 
 ### Build & Run Commands
 ```bash
@@ -186,210 +162,48 @@ mvn test
 
 # Run integration + E2E tests (uses Testcontainers)
 mvn verify
-
-# Package JAR
-mvn package -DskipTests
 ```
+
+### Spring Boot 3.4+ Migration Gotchas
+1. **Security**: Unified in `SecurityConfiguration.java`. Use `rappidrive.security.test-mode: true` in test profiles to bypass auth. Avoid separate `TestSecurityConfiguration` classes.
+2. **Hibernate 6.6**: If an ID is assigned in the domain (manually), REMOVE `@GeneratedValue` from the JPA entity to avoid `StaleObjectStateException`.
+3. **Flyway 10**: Require `flyway-database-postgresql` dependency for PostgreSQL support.
+4. **Records**: Ensure `-parameters` is set in `maven-compiler-plugin` for Jackson to correctly map record components to JSON fields.
 
 ### Key Project Features to Understand Before Coding
 1. **Virtual Threads** (Java 21): Enabled by default (`spring.threads.virtual.enabled=true`)
-   - All HTTP requests run on virtual threads
-   - Use for I/O-heavy operations
-   - No special code needed - Spring Boot handles it
-
-2. **ParallelExecutor** (Concurrent Operations)
-   - Located: `com.rappidrive.application.concurrency.ParallelExecutor`
-   - Methods: `executeAll()`, `executeRace()`, `mapParallel()`
-   - Used in: `FindAvailableDriversUseCase` for querying multiple geographic zones
-   - Works seamlessly with virtual threads
-
-3. **Outbox Pattern** (Reliable Event Publishing)
-   - Domain events automatically captured in `outbox_event` table
-   - `OutboxPublisher` processes pending events asynchronously
-   - Ensures events are published even if service crashes
-   - Key classes: `DomainEvent`, `OutboxEventJpaEntity`, `OutboxPublisher`, `EventDispatcherPort`
-
-4. **PostGIS Spatial Queries** (Geospatial Operations)
-   - Used in: `FindAvailableDriversUseCase` for near-me driver search
-   - Query: `ST_DWithin()` with KNN operator (`<->`)
-   - Performance: <50ms for 10,000+ drivers with proper indexes
-   - Location stored in domain as `Location` value object (lat/lon)
-
-5. **Multi-Tenancy**
-   - Every aggregate root has `TenantId` field
-   - Tenant isolation enforced at repository level (WHERE tenant_id = ?)
-   - Never query/access data across tenants
+2. **ParallelExecutor** (Concurrent Operations): utility for I/O-heavy parallel tasks
+3. **Outbox Pattern** (Reliable Event Publishing): captured in `outbox_event` table, dispatched asynchronously
+4. **PostGIS Spatial Queries**: KNN operator (`<->`) + GIST index for fast driver matching
+5. **Multi-Tenancy**: Tenant context resolved from JWT/Header, enforced via Hibernate `@Filter`
 
 ### Adding New Features (Step-by-Step)
-1. **Domain First**: Create entities/value objects in `domain/` (no annotations, pure Java)
-   - Behavior-rich classes with invariant enforcement
-   - Use value objects for domain concepts (not primitives)
-   
-2. **Output Ports**: Define repository/service interfaces in `application/ports/output/`
-   - Small, focused interfaces (one responsibility)
-   
-3. **Input Port**: Create use case interface in `application/ports/input/` (e.g., `FindAvailableDriversInputPort`)
-   
-4. **Use Case**: Implement in `application/usecases/` (e.g., `FindAvailableDriversUseCase`)
-   - Depend only on output ports via constructor injection
-   - Use `ParallelExecutor` for parallel operations if needed
-   
-5. **Adapters**: Implement ports in `infrastructure/`
-   - JPA adapters in `infrastructure/persistence/adapters/`
-   - External service adapters in `infrastructure/adapters/`
-   - Always map between JPA and domain entities
-   
-6. **Configuration**: Wire beans in `infrastructure/config/BeanConfiguration.java`
-   
-7. **Presentation**: Create REST controller + DTOs
-   - Controllers in `presentation/controllers/`
-   - DTOs in `presentation/dto/`
-   - Mappers in `presentation/mappers/`
+1. **Domain First**: Entities/Value Objects in `domain/` (behavior-rich)
+2. **Output Ports**: repository/service interfaces in `application/ports/output/`
+3. **Input Port**: use case interface + inner `Command` record in `application/ports/input/`
+4. **Use Case**: implementation in `application/usecases/` (Constructor injection)
+5. **Adapters**: implementation in `infrastructure/` (always map entities)
+6. **Configuration**: Wire beans in `infrastructure/config/UseCaseConfiguration.java`
+7. **Presentation**: REST controller + DTOs + Mapper in `presentation/`
 
 ### Testing Strategy
-- **Unit Tests**: Domain logic + use cases with Mockito
-  - Located: `src/test/java/com/rappidrive/domain/` and `.../application/usecases/`
-  - Mock output ports
-  
-- **Integration Tests**: Adapters + repositories with `@DataJpaTest`, Testcontainers
-  - Located: `src/test/java/com/rappidrive/infrastructure/`
-  - Tests actual database interactions
-  
-- **E2E Tests**: Full application context with `@SpringBootTest`
-  - Located: `src/test/java/com/rappidrive/e2e/`
-  - Tests complete user workflows
-  
-- **Architecture Tests**: Enforce hexagonal boundaries with ArchUnit
-  - Located: `src/test/java/com/rappidrive/architecture/HexagonalArchitectureTest.java`
-  - Validates no framework imports in domain/
-
-## Project-Specific Rules & Patterns
-
-### Critical Patterns in This Codebase
-
-**1. Domain Events & Outbox Pattern**
-- Domain entities emit events (e.g., `DriverCreatedEvent`, `TripCompletedEvent`)
-- Use: `DomainEventsCollector.collect(event)` in domain methods
-- Events automatically captured in `outbox_event` table during transaction
-- `OutboxPublisher` asynchronously publishes to `EventDispatcherPort`
-- Example: [TripCompletionService.java](src/main/java/com/rappidrive/domain/services/TripCompletionService.java)
-
-**2. Parallel Execution Pattern** 
-- `ParallelExecutor.mapParallel()` for transforming collections in parallel
-- `ParallelExecutor.executeAll()` for multiple tasks that must all succeed
-- Used in: `FindAvailableDriversUseCase` to query multiple geographic zones concurrently
-- Exception handling: Exceptions propagated after all tasks complete
-- Example: [FindAvailableDriversUseCase.java](src/main/java/com/rappidrive/application/usecases/driver/FindAvailableDriversUseCase.java)
-
-**3. Value Objects with Converters**
-- All value objects immutable with `@Immutable` (if needed)
-- Database converters bridge JPA and domain value objects
-- Example: `EmailConverter`, `CPFConverter`, `PhoneConverter`, `TenantIdConverter`
-- Located: `infrastructure/persistence/converters/`
-
-**4. Multi-Tenancy Enforcement**
-- `TenantId` appears in: Driver, Passenger, Trip, Vehicle, Payment, Rating, Notification
-- Repository queries ALWAYS include `WHERE tenant_id = ?`
-- Never expose data across tenants - verify in every query
-- Configuration handled at infrastructure layer, transparent to domain
-
-**5. Exception Hierarchy**
-- `DomainException` (unchecked) for business rule violations
-  - Examples: `DriverNotFoundException`, `InvalidFareException`, `TripConcurrencyException`
-- `ApplicationException` for use case specific errors
-- `GlobalExceptionHandler` maps to HTTP status codes in `presentation/exception/`
-- HTTP Status Mapping:
-  - 400: Domain validation errors (Bad Request)
-  - 404: Not found exceptions
-  - 409: Conflict (duplicate email, race conditions, state conflicts)
-  - 500: Unexpected infrastructure errors
-
-**6. Mapper Patterns**
-- Infrastructure mappers: JPA entity ↔ Domain entity
-  - Located: `infrastructure/persistence/mappers/` and `infrastructure/persistence/fare/`
-  - Example: [DriverMapper.java](src/main/java/com/rappidrive/infrastructure/persistence/mappers/DriverMapper.java)
-- Presentation mappers: DTO ↔ Domain entity
-  - Located: `presentation/mappers/`
-  - Example: [DriverDtoMapper.java](src/main/java/com/rappidrive/presentation/mappers/DriverDtoMapper.java)
-- Always convert at boundaries - never expose domain entities directly via REST API
-
-**7. Domain Services**
-- Used for complex business logic that spans multiple entities
-- Located: `domain/services/`
-- Examples: `StandardFareCalculator`, `RatingValidationService`, `TripCompletionService`
-- Stateless, injected by name/type where needed
-
-**8. Enums in Domain**
-- Located: `domain/enums/`
-- Examples: `DriverStatus`, `TripStatus`, `PaymentStatus`, `RatingType`, `VehicleType`
-- Use in domain entities and value objects
-
-### No Framework in Domain
-- Domain layer: Pure Java only
-- Allowed in domain: Standard Java, custom exceptions, value objects
-- Forbidden in domain: `@Entity`, `@SpringBootTest`, `@Autowired`, Lombok annotations
-
-### Database
-- PostgreSQL 16 + PostGIS 3.4 for geospatial
-- JPA/Hibernate only in `infrastructure/persistence/`
-- Domain entities are separate from JPA entities
-- Migrations: Flyway scripts in `src/main/resources/db/migration/`
-
-### Validation
-- **Input validation**: DTO level in `presentation/dto/` with Bean Validation annotations
-- **Business rule validation**: Domain layer (throw domain exceptions)
-- Value objects validate in constructors (e.g., `Email`, `CPF`, `Phone`)
-
-### Configuration
-- Application profiles: `application-dev.yml`, `application-test.yml`, `application-prod.yml`
-- Virtual threads enabled: `spring.threads.virtual.enabled=true`
-- Bean configuration centralized: `infrastructure/config/BeanConfiguration.java`, `ParallelExecutorConfiguration.java`
-- Database pooling monitored: `ConnectionPoolMonitor`, `ConnectionPoolHealthIndicator`
-
-## Common Tasks
-
-### Create a new domain entity
-1. Create class in `domain/entities/` (no annotations, pure Java)
-2. Include `TenantId` for multi-tenancy
-3. Add constructor validation (throw `IllegalArgumentException`)
-4. Define value objects for domain concepts
-5. Add behavior methods (not just getters/setters)
-6. Example: [Driver.java](src/main/java/com/rappidrive/domain/entities/Driver.java) (lines 1-80)
-
-### Add a new use case
-1. Create interface in `application/ports/input/` (e.g., `CreateOrderInputPort`)
-2. Implement in `application/usecases/` (e.g., `CreateOrderUseCase`)
-3. Use constructor injection for output ports
-4. Create `@Configuration` class in `infrastructure/config/` to wire dependencies
-5. Example: [CreateTripUseCase.java](src/main/java/com/rappidrive/application/usecases/trip/CreateTripUseCase.java)
-
-### Add external integration (REST API, message queue, etc.)
-1. Define port interface in `application/ports/output/` (e.g., `PaymentGatewayPort`)
-2. Implement adapter in `infrastructure/adapters/`
-3. Annotate adapter with `@Component` or `@Service`
-4. Inject into use cases that need it
-5. Example: [MockPaymentGatewayAdapter.java](src/main/java/com/rappidrive/infrastructure/adapters/MockPaymentGatewayAdapter.java)
-
-### Add REST endpoint
-1. Create request/response DTOs in `presentation/dto/`
-2. Create controller in `presentation/controllers/` with `@RestController`
-3. Inject input port (use case interface)
-4. Create mapper to convert DTO ↔ Domain
-5. Use `@ExceptionHandler` or rely on `GlobalExceptionHandler`
-6. Example: [TripController.java](src/main/java/com/rappidrive/presentation/controllers/TripController.java)
+- **Unit Tests**: Mockito mocks for output ports, test domain/use case logic
+- **Integration Tests**: Testcontainers for repositories/adapters
+- **E2E Tests**: RestAssured + production DTOs to validate full workflows
+- **Architecture Tests**: ArchUnit enforces hexagonal boundaries
 
 ## Technology Stack
 
-- **Language**: Java 17+
-- **Framework**: Spring Boot 3.x
-- **Build Tool**: Maven or Gradle
-- **Database**: PostgreSQL with Spring Data JPA/Hibernate (in infrastructure layer only)
-- **Testing**: JUnit 5, Mockito, Testcontainers (PostgreSQL), ArchUnit
-- **Validation**: Bean Validation (Jakarta Validation)
-- **Migration**: Flyway or Liquibase for database versioning
+- **Language**: Java 21 (LTS)
+- **Framework**: Spring Boot 3.4.5, Spring Cloud 2024.0.0
+- **Database**: PostgreSQL 16, Hibernate 6.6, Flyway 10
+- **Testing**: JUnit 5, Mockito, Testcontainers, ArchUnit
+- **Mapping**: MapStruct 1.6.2
+- **Boilerplate**: Lombok 1.18.34
+- **Documentation**: SpringDoc 2.8.1
 
 ## References
 
-- Clean Architecture by Robert C. Martin
 - Hexagonal Architecture pattern by Alistair Cockburn
 - Get Your Hands Dirty on Clean Architecture by Tom Hombergs
+- Spring Boot 3.4 Release Notes
