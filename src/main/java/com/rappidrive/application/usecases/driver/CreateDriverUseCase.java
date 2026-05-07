@@ -6,6 +6,7 @@ import com.rappidrive.application.ports.output.DriverRepositoryPort;
 import com.rappidrive.domain.entities.Driver;
 import com.rappidrive.domain.entities.DriverApproval;
 import com.rappidrive.domain.enums.DriverStatus;
+import com.rappidrive.domain.exceptions.EntityAlreadyExistsException;
 import com.rappidrive.domain.events.DriverKeycloakLinkedEvent;
 import com.rappidrive.domain.events.DriverApprovalSubmittedEvent;
 import com.rappidrive.domain.events.DomainEventsCollector;
@@ -31,11 +32,11 @@ public class CreateDriverUseCase implements CreateDriverInputPort {
     public Driver execute(CreateDriverCommand command) {
         // Validate uniqueness
         if (driverRepository.existsByEmail(command.email())) {
-            throw new IllegalArgumentException("Driver with email " + command.email() + " already exists");
+            throw new EntityAlreadyExistsException("Driver with email " + command.email() + " already exists");
         }
         
         if (driverRepository.existsByCpf(command.cpf())) {
-            throw new IllegalArgumentException("Driver with CPF " + command.cpf() + " already exists");
+            throw new EntityAlreadyExistsException("Driver with CPF " + command.cpf() + " already exists");
         }
         
         // Validate documents (at least 1)

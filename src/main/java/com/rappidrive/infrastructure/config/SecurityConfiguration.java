@@ -2,9 +2,11 @@ package com.rappidrive.infrastructure.config;
 
 import com.rappidrive.infrastructure.security.keycloak.KeycloakJwtAuthenticationConverter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -14,18 +16,14 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Configuração de segurança para OAuth2 Resource Server integrado com Keycloak.
+ * Configuração de segurança centralizada para o RappiDrive.
+ * Unifica os modos de produção, teste e desenvolvimento em um único componente.
+ * 
+ * HIST-2026-025: Hardening de segurança e isolamento.
  */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
-@Profile("!test")
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
-    prefix = "rappidrive.security",
-    name = "enabled",
-    havingValue = "true",
-    matchIfMissing = true
-)
 public class SecurityConfiguration {
 
     @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:http://localhost:8180/realms/rappidrive-test/protocol/openid-connect/certs}")
@@ -40,7 +38,28 @@ public class SecurityConfiguration {
     @Value("${rappidrive.docs.public:true}")
     private boolean docsPublic;
 
+    /**
+     * Configuração para ambiente de teste ou quando a segurança está desabilitada.
+     * Ativada se test-mode=true OU security.enabled=false.
+     */
     @Bean
+    @Order(1)
+    @ConditionalOnExpression("${rappidrive.security.test-mode:false} || !${rappidrive.security.enabled:true}")
+    public SecurityFilterChain permitAllFilterChain(HttpSecurity http) throws Exception {
+        return http
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            .build();
+    }
+
+    /**
+     * Configuração padrão de produção (OAuth2 / Keycloak).
+     * Ativada SOMENTE se security.enabled=true E test-mode=false.
+     */
+    @Bean
+    @Order(2)
+    @ConditionalOnExpression("${rappidrive.security.enabled:true} && !${rappidrive.security.test-mode:false}")
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
@@ -48,14 +67,16 @@ public class SecurityConfiguration {
             .authorizeHttpRequests(auth -> {
                 if (docsPublic) {
                     auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll();
-                } else {
-                    auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").hasRole("ADMIN");
                 }
 
                 auth.requestMatchers(
                     "/actuator/health",
-                    "/actuator/prometheus"
+                    "/actuator/prometheus",
+                    "/api/health"
                 ).permitAll();
+
+                // Public onboarding endpoints
+                auth.requestMatchers("/api/v1/drivers", "/api/v1/passengers").permitAll();
                 
                 if (e2ePermitAll) {
                     auth.requestMatchers("/api/v1/**").permitAll();

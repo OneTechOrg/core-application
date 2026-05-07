@@ -4,6 +4,7 @@ import com.rappidrive.application.ports.input.driver.CreateDriverInputPort;
 import com.rappidrive.application.ports.output.DriverApprovalRepositoryPort;
 import com.rappidrive.application.ports.output.DriverRepositoryPort;
 import com.rappidrive.domain.entities.Driver;
+import com.rappidrive.domain.exceptions.EntityAlreadyExistsException;
 import com.rappidrive.domain.valueobjects.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -99,7 +100,7 @@ class CreateDriverUseCaseTest {
 
         // When & Then
         assertThatThrownBy(() -> useCase.execute(command))
-            .isInstanceOf(IllegalArgumentException.class)
+            .isInstanceOf(EntityAlreadyExistsException.class)
             .hasMessageContaining("already exists");
     }
 
@@ -111,7 +112,7 @@ class CreateDriverUseCaseTest {
 
         // When & Then
         assertThatThrownBy(() -> useCase.execute(command))
-            .isInstanceOf(IllegalArgumentException.class)
+            .isInstanceOf(EntityAlreadyExistsException.class)
             .hasMessageContaining("already exists");
     }
 }

@@ -30,7 +30,6 @@ import java.util.UUID;
  * HIST-2026-014: Atualizado para Keycloak JWT
  */
 @Component
-@Profile({"!test", "!e2e"})
 public class SpringSecurityCurrentUserAdapter implements CurrentUserPort {
 
     @Override

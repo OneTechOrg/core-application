@@ -62,7 +62,6 @@ public class DriverJpaEntity {
     }
     
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "keycloak_id", unique = true)

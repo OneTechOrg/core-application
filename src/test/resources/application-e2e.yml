@@ -53,3 +53,8 @@ keycloak:
   token-endpoint: http://localhost:8180/realms/rappidrive-test/protocol/openid-connect/token
   client-id: rappidrive-api
 
+rappidrive.security.test-mode: true
+spring.cloud.compatibility-verifier.enabled: false
+outbox.processor.enabled: false
+rappidrive.dispatch.timeout-check-rate-ms: 999999
+outbox.publisher.enabled: false

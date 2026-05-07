@@ -81,6 +81,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
     
+    @ExceptionHandler(EntityAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleEntityAlreadyExists(EntityAlreadyExistsException ex) {
+        log.error("Entity already exists: {}", ex.getMessage());
+        
+        ErrorResponse response = new ErrorResponse(
+            LocalDateTime.now(),
+            HttpStatus.CONFLICT.value(),
+            "Entity already exists",
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+    
     @ExceptionHandler(InvalidDriverStateException.class)
     public ResponseEntity<ErrorResponse> handleInvalidDriverState(InvalidDriverStateException ex) {
         log.error("Invalid driver state: {}", ex.getMessage());

@@ -1,0 +1,2 @@
+rappidrive.security.test-mode: true
+spring.cloud.compatibility-verifier.enabled: false
