@@ -44,7 +44,7 @@ class AuthRegistrationIT extends IntegrationTestBase {
             .post("/api/v1/auth/otp/send")
             .then()
             .statusCode(200)
-            .body("retryAfterSeconds", equalTo(600));
+            .body("expiresIn", equalTo(600));
     }
 
     @Test

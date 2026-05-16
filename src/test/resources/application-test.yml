@@ -1,2 +1,24 @@
 rappidrive.security.test-mode: true
 spring.cloud.compatibility-verifier.enabled: false
+
+rappidrive:
+  auth:
+    phone-token:
+      secret: test-secret-key-32-chars-minimum!
+      ttl-seconds: 300
+
+twilio:
+  account-sid: ACtest
+  auth-token: test_token
+  verify:
+    service-sid: VAtest
+
+keycloak:
+  auth-server-url: http://localhost:8180
+  realm: rappidrive-test
+  resource: rappidrive-api
+  credentials:
+    secret: test-secret
+  admin:
+    username: admin
+    password: admin
