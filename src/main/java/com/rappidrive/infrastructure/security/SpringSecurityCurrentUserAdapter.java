@@ -1,13 +1,16 @@
 package com.rappidrive.infrastructure.security;
 
 import com.rappidrive.application.ports.output.CurrentUserPort;
-import org.springframework.context.annotation.Profile;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.Collection;
 import java.util.List;
@@ -20,22 +23,23 @@ import java.util.UUID;
  * 
  * Implementa CurrentUserPort (application layer) isolando a camada de domínio de detalhes do Spring Security.
  * 
- * Com Keycloak, extrai:
- * - sub (UUID do usuário no Keycloak)
- * - email (claim padrão do OIDC)
- * - preferred_username (username do Keycloak)
- * - realm_access.roles (roles do realm)
- * - resource_access.{client-id}.roles (roles do client)
- * 
  * HIST-2026-014: Atualizado para Keycloak JWT
  */
 @Component
 public class SpringSecurityCurrentUserAdapter implements CurrentUserPort {
 
+    @Value("${rappidrive.security.test-mode:false}")
+    private boolean testMode;
+
     @Override
     public Optional<CurrentUser> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
         if (authentication == null || !authentication.isAuthenticated()) {
+            // Se estiver em test-mode, tenta buscar do header X-User-Id (suporte para testes E2E)
+            if (testMode) {
+                return getMockUserFromHeader();
+            }
             return Optional.empty();
         }
 
@@ -52,62 +56,53 @@ public class SpringSecurityCurrentUserAdapter implements CurrentUserPort {
         return Optional.of(new CurrentUser(userId, username, email, roles, scopes));
     }
 
+    private Optional<CurrentUser> getMockUserFromHeader() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            HttpServletRequest request = attributes.getRequest();
+            String userIdHeader = request.getHeader("X-User-Id");
+            if (userIdHeader != null) {
+                return parseUuid(userIdHeader).map(uuid -> 
+                    new CurrentUser(uuid, "test-user", "test@example.com", List.of("PASSENGER", "DRIVER"), List.of("openid"))
+                );
+            }
+        }
+        return Optional.empty();
+    }
+
     /**
      * Extrai o UUID do usuário a partir do claim 'sub' do JWT.
-     * 
-     * Keycloak sempre retorna o UUID do usuário no claim 'sub' (subject).
      */
     private Optional<UUID> extractUserId(Authentication authentication) {
         if (authentication instanceof JwtAuthenticationToken jwtAuth) {
             Jwt jwt = jwtAuth.getToken();
-            
-            // Keycloak: sub = UUID do usuário
             String subject = jwt.getSubject();
             if (subject != null) {
                 return parseUuid(subject);
             }
-            
-            // Fallback: user_id claim (caso customizado)
             Object userIdClaim = jwt.getClaim("user_id");
             if (userIdClaim != null) {
                 return parseUuid(userIdClaim.toString());
             }
         }
-        
-        // Fallback final: tenta parsear o nome como UUID
         return parseUuid(authentication.getName());
     }
 
-    /**
-     * Extrai o username a partir do claim 'preferred_username' do JWT.
-     * 
-     * Keycloak usa 'preferred_username' como username padrão.
-     */
     private String extractUsername(Authentication authentication) {
         if (authentication instanceof JwtAuthenticationToken jwtAuth) {
             Jwt jwt = jwtAuth.getToken();
-            
-            // Keycloak: preferred_username
             String preferredUsername = jwt.getClaim("preferred_username");
             if (preferredUsername != null) {
                 return preferredUsername;
             }
-            
-            // Fallback: email
             String email = jwt.getClaim("email");
             if (email != null) {
                 return email;
             }
         }
-        
         return authentication.getName();
     }
 
-    /**
-     * Extrai o email a partir do claim 'email' do JWT.
-     * 
-     * Keycloak inclui 'email' como claim padrão do OIDC.
-     */
     private String extractEmail(Authentication authentication) {
         if (authentication instanceof JwtAuthenticationToken jwtAuth) {
             Jwt jwt = jwtAuth.getToken();

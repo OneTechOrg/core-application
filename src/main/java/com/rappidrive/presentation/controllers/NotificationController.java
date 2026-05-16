@@ -7,6 +7,7 @@ import com.rappidrive.application.ports.input.notification.GetUserNotificationsI
 import com.rappidrive.application.ports.input.notification.MarkNotificationAsReadInputPort;
 import com.rappidrive.application.ports.input.notification.MarkNotificationAsReadInputPort.MarkAsReadCommand;
 import com.rappidrive.application.ports.input.notification.SendNotificationInputPort;
+import com.rappidrive.application.ports.output.CurrentUserPort;
 import com.rappidrive.domain.entities.Notification;
 import com.rappidrive.domain.enums.NotificationStatus;
 import com.rappidrive.domain.valueobjects.TenantId;
@@ -25,6 +26,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,6 +43,7 @@ public class NotificationController {
     private final GetUserNotificationsInputPort getUserNotificationsUseCase;
     private final MarkNotificationAsReadInputPort markAsReadUseCase;
     private final GetUnreadCountInputPort getUnreadCountUseCase;
+    private final CurrentUserPort currentUserPort;
     private final NotificationDtoMapper mapper;
     
     public NotificationController(
@@ -48,11 +51,13 @@ public class NotificationController {
             GetUserNotificationsInputPort getUserNotificationsUseCase,
             MarkNotificationAsReadInputPort markAsReadUseCase,
             GetUnreadCountInputPort getUnreadCountUseCase,
+            CurrentUserPort currentUserPort,
             NotificationDtoMapper mapper) {
         this.sendNotificationUseCase = sendNotificationUseCase;
         this.getUserNotificationsUseCase = getUserNotificationsUseCase;
         this.markAsReadUseCase = markAsReadUseCase;
         this.getUnreadCountUseCase = getUnreadCountUseCase;
+        this.currentUserPort = currentUserPort;
         this.mapper = mapper;
     }
     
@@ -92,18 +97,19 @@ public class NotificationController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping
     public ResponseEntity<List<NotificationResponse>> getUserNotifications(
-            @RequestHeader("X-User-Id") UUID userId,
             @RequestHeader("X-Tenant-Id") UUID tenantId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        
+        UserId authenticatedUserId = getAuthenticatedUserId();
         
         NotificationStatus notificationStatus = status != null 
             ? NotificationStatus.valueOf(status) 
             : null;
         
         GetUserNotificationsQuery query = new GetUserNotificationsQuery(
-            new UserId(userId),
+            authenticatedUserId,
             notificationStatus,
             new TenantId(tenantId),
             page,
@@ -127,11 +133,12 @@ public class NotificationController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/unread-count")
     public ResponseEntity<UnreadCountResponse> getUnreadCount(
-            @RequestHeader("X-User-Id") UUID userId,
             @RequestHeader("X-Tenant-Id") UUID tenantId) {
         
+        UserId authenticatedUserId = getAuthenticatedUserId();
+        
         GetUnreadCountQuery query = new GetUnreadCountQuery(
-            new UserId(userId),
+            authenticatedUserId,
             new TenantId(tenantId)
         );
         
@@ -153,17 +160,24 @@ public class NotificationController {
     @PatchMapping("/{id}/read")
     public ResponseEntity<Void> markAsRead(
             @PathVariable UUID id,
-            @RequestHeader("X-User-Id") UUID userId,
             @RequestHeader("X-Tenant-Id") UUID tenantId) {
+        
+        UserId authenticatedUserId = getAuthenticatedUserId();
         
         MarkAsReadCommand command = new MarkAsReadCommand(
             id,
-            new UserId(userId),
+            authenticatedUserId,
             new TenantId(tenantId)
         );
         
         markAsReadUseCase.execute(command);
         
         return ResponseEntity.noContent().build();
+    }
+
+    private UserId getAuthenticatedUserId() {
+        return currentUserPort.getCurrentUser()
+            .map(user -> new UserId(user.userId()))
+            .orElseThrow(() -> new AccessDeniedException("User not authenticated"));
     }
 }

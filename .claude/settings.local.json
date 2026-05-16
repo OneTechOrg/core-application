@@ -7,7 +7,13 @@
       "Bash(python3 -c ' *)",
       "Bash(docker exec rappidrive-postgres psql -U rappidrive -d rappidrive_dev -c 'INSERT INTO fare_configurations \\(tenant_id, base_fare, price_per_km, price_per_minute, minimum_fare, platform_commission_rate\\) *)",
       "Bash(xargs cat *)",
-      "Bash(mvn test *)"
+      "Bash(mvn test *)",
+      "Skill(subagent-driven-development)",
+      "Read(//Users/regis/.agents/skills/subagent-driven-development/**)",
+      "Bash(mvn dependency:resolve *)",
+      "Bash(mvn clean *)",
+      "Bash(mvn dependency:tree -q)",
+      "Bash(mvn validate *)"
     ]
   }
 }

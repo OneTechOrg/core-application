@@ -6,7 +6,9 @@ import com.rappidrive.application.ports.input.rating.GetDriverRatingSummaryInput
 import com.rappidrive.application.ports.input.rating.GetPassengerRatingInputPort.PassengerRatingInfo;
 import com.rappidrive.application.ports.input.rating.GetTripRatingsInputPort.TripRatingsInfo;
 import com.rappidrive.application.ports.input.rating.ReportOffensiveRatingInputPort.ReportRatingCommand;
+import com.rappidrive.application.ports.output.CurrentUserPort;
 import com.rappidrive.domain.entities.Rating;
+import com.rappidrive.domain.valueobjects.UserId;
 import com.rappidrive.presentation.dto.request.CreateRatingRequest;
 import com.rappidrive.presentation.dto.request.ReportRatingRequest;
 import com.rappidrive.presentation.dto.response.*;
@@ -14,6 +16,8 @@ import com.rappidrive.presentation.mappers.RatingDtoMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -30,6 +34,7 @@ public class RatingController {
     private final GetPassengerRatingInputPort getPassengerRatingUseCase;
     private final GetTripRatingsInputPort getTripRatingsUseCase;
     private final ReportOffensiveRatingInputPort reportOffensiveRatingUseCase;
+    private final CurrentUserPort currentUserPort;
     private final RatingDtoMapper mapper;
     
     public RatingController(
@@ -38,6 +43,7 @@ public class RatingController {
             GetPassengerRatingInputPort getPassengerRatingUseCase,
             GetTripRatingsInputPort getTripRatingsUseCase,
             ReportOffensiveRatingInputPort reportOffensiveRatingUseCase,
+            CurrentUserPort currentUserPort,
             RatingDtoMapper mapper
     ) {
         this.createRatingUseCase = createRatingUseCase;
@@ -45,6 +51,7 @@ public class RatingController {
         this.getPassengerRatingUseCase = getPassengerRatingUseCase;
         this.getTripRatingsUseCase = getTripRatingsUseCase;
         this.reportOffensiveRatingUseCase = reportOffensiveRatingUseCase;
+        this.currentUserPort = currentUserPort;
         this.mapper = mapper;
     }
     
@@ -53,17 +60,17 @@ public class RatingController {
      * Criar avaliação (passageiro ou motorista).
      * 
      * @param request Dados da avaliação
-     * @param raterId ID de quem avalia (X-User-Id header)
      * @param rateeId ID de quem é avaliado (query param)
      * @return RatingResponse criado
      */
+    @PreAuthorize("isAuthenticated()")
     @PostMapping
     public ResponseEntity<RatingResponse> createRating(
             @Valid @RequestBody CreateRatingRequest request,
-            @RequestHeader("X-User-Id") UUID raterId,
             @RequestParam UUID rateeId
     ) {
-        CreateRatingCommand command = mapper.toCommand(request, raterId, rateeId);
+        UserId authenticatedUserId = getAuthenticatedUserId();
+        CreateRatingCommand command = mapper.toCommand(request, authenticatedUserId.getValue(), rateeId);
         Rating rating = createRatingUseCase.execute(command);
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(mapper.toRatingResponse(rating));
@@ -120,21 +127,27 @@ public class RatingController {
      * 
      * @param ratingId ID da avaliação
      * @param request Motivo do report
-     * @param reporterId ID de quem reporta (X-User-Id header)
      * @return 204 No Content
      */
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/{ratingId}/report")
     public ResponseEntity<Void> reportRating(
             @PathVariable UUID ratingId,
-            @Valid @RequestBody ReportRatingRequest request,
-            @RequestHeader("X-User-Id") UUID reporterId
+            @Valid @RequestBody ReportRatingRequest request
     ) {
+        UserId authenticatedUserId = getAuthenticatedUserId();
         ReportRatingCommand command = new ReportRatingCommand(
             ratingId,
-            reporterId,
+            authenticatedUserId.getValue(),
             request.reason()
         );
         reportOffensiveRatingUseCase.execute(command);
         return ResponseEntity.noContent().build();
+    }
+
+    private UserId getAuthenticatedUserId() {
+        return currentUserPort.getCurrentUser()
+            .map(user -> new UserId(user.userId()))
+            .orElseThrow(() -> new AccessDeniedException("User not authenticated"));
     }
 }

@@ -3,23 +3,18 @@ package com.rappidrive.infrastructure.persistence.adapters;
 import com.rappidrive.domain.entities.Driver;
 import com.rappidrive.domain.valueobjects.Location;
 import com.rappidrive.domain.valueobjects.TenantId;
+import com.rappidrive.infrastructure.test.IntegrationTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.test.context.ActiveProfiles;
-import com.rappidrive.RappiDriveApplication;
 
 import java.util.List;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(classes = RappiDriveApplication.class)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@ActiveProfiles("test")
-class JpaDriverRepositoryAdapterTest {
+class JpaDriverRepositoryAdapterTest extends IntegrationTestBase {
 
     @Autowired
     private JpaDriverRepositoryAdapter repositoryAdapter;

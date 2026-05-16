@@ -4,14 +4,14 @@ import com.rappidrive.domain.outbox.OutboxEvent;
 import com.rappidrive.infrastructure.persistence.adapters.JpaOutboxRepository;
 import com.rappidrive.infrastructure.persistence.entities.OutboxEventJpaEntity;
 import com.rappidrive.infrastructure.persistence.repositories.SpringDataOutboxRepository;
+import com.rappidrive.infrastructure.test.IntegrationTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -24,11 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Integration tests for OutboxEventProcessor with real database.
  * HIST-2026-011: Validates full event lifecycle from PENDING → SENT/FAILED
  */
-@DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@ActiveProfiles("test")
 @Import({JpaOutboxRepository.class})
-class OutboxEventProcessorIntegrationTest {
+class OutboxEventProcessorIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     private SpringDataOutboxRepository springDataRepository;

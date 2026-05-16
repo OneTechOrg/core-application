@@ -75,8 +75,8 @@ public class SecurityConfiguration {
                     "/api/health"
                 ).permitAll();
 
-                // Public onboarding endpoints
-                auth.requestMatchers("/api/v1/drivers", "/api/v1/passengers").permitAll();
+                // Public onboarding and auth endpoints
+                auth.requestMatchers("/api/v1/drivers", "/api/v1/passengers", "/api/v1/auth/**").permitAll();
                 
                 if (e2ePermitAll) {
                     auth.requestMatchers("/api/v1/**").permitAll();

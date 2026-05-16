@@ -2,6 +2,7 @@ package com.rappidrive.infrastructure.adapters.keycloak;
 
 import com.rappidrive.application.exceptions.IdentityProvisioningException;
 import com.rappidrive.application.ports.output.IdentityProvisioningPort;
+import com.rappidrive.domain.exceptions.EntityAlreadyExistsException;
 import com.rappidrive.domain.valueobjects.Email;
 import com.rappidrive.domain.valueobjects.TenantId;
 import org.keycloak.admin.client.Keycloak;
@@ -101,6 +102,77 @@ public class KeycloakProvisioningAdapter implements IdentityProvisioningPort {
         } catch (Exception e) {
             log.error("Error creating tenant admin in Keycloak", e);
             throw new IdentityProvisioningException("Failed to create tenant admin: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public String createMobileUser(String email, String phone, String fullName,
+                                   String password, String role, TenantId tenantId) {
+        log.info("Creating mobile user for tenant: {}, email: {}, role: {}", tenantId, email, role);
+
+        try {
+            RealmResource realmResource = keycloakAdmin.realm(realm);
+            UsersResource usersResource = realmResource.users();
+
+            // 1. Create user representation
+            UserRepresentation user = new UserRepresentation();
+            user.setUsername(email);
+            user.setEmail(email);
+            user.setEnabled(true);
+            user.setEmailVerified(true); // Verified via OTP before this call
+            user.setFirstName(fullName);
+
+            // Set attributes
+            user.setAttributes(Map.of(
+                    "tenant_id", List.of(tenantId.getValue().toString()),
+                    "phone", List.of(phone)
+            ));
+
+            // 2. Create user in Keycloak
+            Response response = usersResource.create(user);
+
+            if (response.getStatus() == 409) {
+                throw new EntityAlreadyExistsException("User with email " + email + " already exists in Keycloak");
+            }
+
+            if (response.getStatus() != 201) {
+                throw new IdentityProvisioningException(
+                        "Failed to create user in Keycloak. Status: " + response.getStatus() +
+                        ", Reason: " + response.getStatusInfo().getReasonPhrase()
+                );
+            }
+
+            // Extract user ID
+            String userId = extractIdFromLocation(response.getLocation().getPath());
+            log.info("User created with ID: {}", userId);
+
+            // 3. Set password
+            CredentialRepresentation credential = new CredentialRepresentation();
+            credential.setType(CredentialRepresentation.PASSWORD);
+            credential.setValue(password);
+            credential.setTemporary(false);
+
+            usersResource.get(userId).resetPassword(credential);
+            log.info("Password set for user: {}", userId);
+
+            // 4. Create tenant group if not exists
+            String groupId = createTenantGroup(tenantId);
+
+            // 5. Add user to tenant group
+            realmResource.users().get(userId).joinGroup(groupId);
+            log.info("User {} added to group {}", userId, groupId);
+
+            // 6. Assign role
+            assignRoleToUser(userId, role);
+
+            response.close();
+            return userId;
+
+        } catch (EntityAlreadyExistsException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error creating mobile user in Keycloak", e);
+            throw new IdentityProvisioningException("Failed to create mobile user: " + e.getMessage(), e);
         }
     }
     

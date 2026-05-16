@@ -197,6 +197,9 @@ class HexagonalArchitectureTest {
             .orShould().implement(com.rappidrive.application.ports.input.servicearea.ListServiceAreasInputPort.class)
             .orShould().implement(com.rappidrive.application.ports.input.servicearea.CreateServiceAreaInputPort.class)
             .orShould().implement(com.rappidrive.application.ports.input.servicearea.ToggleServiceAreaStatusInputPort.class)
+            .orShould().implement(com.rappidrive.application.ports.input.auth.SendOtpInputPort.class)
+            .orShould().implement(com.rappidrive.application.ports.input.auth.VerifyOtpInputPort.class)
+            .orShould().implement(com.rappidrive.application.ports.input.auth.RegisterUserInputPort.class)
             .because("Use cases must implement their input port interfaces")
             .allowEmptyShould(true);
 

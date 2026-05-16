@@ -34,6 +34,20 @@ public interface IdentityProvisioningPort {
      * @throws IdentityProvisioningException if user creation fails
      */
     String createTenantAdmin(TenantId tenantId, Email adminEmail, String tempPassword);
+
+    /**
+     * Create a mobile user (Driver or Passenger) in Keycloak.
+     *
+     * @param email The user email
+     * @param phone The user phone
+     * @param fullName The user full name
+     * @param password The user password
+     * @param role The role to assign (e.g., ROLE_DRIVER, ROLE_PASSENGER)
+     * @param tenantId The tenant identifier
+     * @return The Keycloak user ID
+     */
+    String createMobileUser(String email, String phone, String fullName,
+                            String password, String role, TenantId tenantId);
     
     /**
      * Create a tenant group in Keycloak.

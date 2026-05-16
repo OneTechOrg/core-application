@@ -1,6 +1,6 @@
 package com.rappidrive.presentation.exception;
 
-import com.rappidrive.application.exceptions.ApplicationException;
+import com.rappidrive.application.exceptions.*;
 import com.rappidrive.domain.exceptions.*;
 import com.rappidrive.presentation.dto.response.ErrorResponse;
 import org.slf4j.Logger;
@@ -94,6 +94,55 @@ public class GlobalExceptionHandler {
         );
         
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+    
+    @ExceptionHandler(InvalidPhoneTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPhoneToken(InvalidPhoneTokenException ex) {
+        log.error("Invalid phone token: {}", ex.getMessage());
+        
+        ErrorResponse response = new ErrorResponse(
+            LocalDateTime.now(),
+            HttpStatus.BAD_REQUEST.value(),
+            "Invalid phone token",
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+    
+    @ExceptionHandler(OtpRateLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleOtpRateLimitExceeded(OtpRateLimitExceededException ex) {
+        log.error("OTP rate limit exceeded: {}", ex.getMessage());
+        
+        ErrorResponse response = new ErrorResponse(
+            LocalDateTime.now(),
+            HttpStatus.TOO_MANY_REQUESTS.value(),
+            "Rate limit exceeded",
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+            .body(response);
+    }
+    
+    @ExceptionHandler(OtpVerificationFailedException.class)
+    public ResponseEntity<ErrorResponse> handleOtpVerificationFailed(OtpVerificationFailedException ex) {
+        log.error("OTP verification failed: {}", ex.getMessage());
+        
+        HttpStatus status = ex.isMaxAttemptsReached() ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.BAD_REQUEST;
+        
+        ErrorResponse response = new ErrorResponse(
+            LocalDateTime.now(),
+            status.value(),
+            ex.isMaxAttemptsReached() ? "Rate limit exceeded" : "Verification failed",
+            ex.getMessage(),
+            null
+        );
+        
+        return ResponseEntity.status(status).body(response);
     }
     
     @ExceptionHandler(InvalidDriverStateException.class)

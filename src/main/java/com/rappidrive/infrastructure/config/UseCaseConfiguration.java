@@ -1,5 +1,6 @@
 package com.rappidrive.infrastructure.config;
 
+import com.rappidrive.application.ports.input.auth.*;
 import com.rappidrive.application.ports.input.driver.*;
 import com.rappidrive.application.ports.input.notification.*;
 import com.rappidrive.application.ports.input.passenger.*;
@@ -16,6 +17,7 @@ import com.rappidrive.application.ports.input.SubmitDriverApprovalInputPort;
 import com.rappidrive.application.ports.input.CompleteTripWithPaymentInputPort;
 import com.rappidrive.application.ports.input.GetTripWithPaymentDetailsInputPort;
 import com.rappidrive.application.ports.output.*;
+import com.rappidrive.application.usecases.auth.*;
 import com.rappidrive.application.usecases.driver.*;
 import com.rappidrive.application.usecases.notification.*;
 import com.rappidrive.application.usecases.passenger.*;
@@ -46,6 +48,27 @@ import java.util.concurrent.ExecutorService;
 @Configuration
 public class UseCaseConfiguration {
     
+    // Auth Use Cases
+
+    @Bean
+    public SendOtpInputPort sendOtpUseCase(SmsOtpPort smsOtpPort, OtpRateLimiterPort rateLimiterPort) {
+        return new SendOtpUseCase(rateLimiterPort, smsOtpPort);
+    }
+
+    @Bean
+    public VerifyOtpInputPort verifyOtpUseCase(SmsOtpPort smsOtpPort, PhoneTokenPort phoneTokenPort) {
+        return new VerifyOtpUseCase(smsOtpPort, phoneTokenPort);
+    }
+
+    @Bean
+    public RegisterUserInputPort registerUserUseCase(
+            PhoneTokenPort phoneTokenPort,
+            OtpRateLimiterPort rateLimiterPort,
+            IdentityProvisioningPort identityProvisioning,
+            PassengerRepositoryPort passengerRepository) {
+        return new RegisterUserUseCase(phoneTokenPort, rateLimiterPort, identityProvisioning, passengerRepository);
+    }
+
     // Driver Use Cases
     
     @Bean
