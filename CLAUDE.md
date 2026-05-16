@@ -45,10 +45,39 @@ mvn failsafe:integration-test -Dit.test=TripRepositoryIT
 
 ```
 com.rappidrive/
-├── domain/           ← Pure Java. Zero framework imports. Ever.
-├── application/      ← Use cases + port interfaces only
+├── domain/
+│   ├── entities/     ← Aggregate roots (Driver, Trip, Passenger, Vehicle, Payment, Rating, Notification, Tenant, DriverApproval, Fare)
+│   ├── valueobjects/ ← Immutable value types (all must be final)
+│   ├── services/     ← Pure domain logic (FareCalculator, CancellationPolicyService, TripCompletionService, RatingValidationService)
+│   ├── events/       ← Domain event types + DomainEventsCollector + DomainEventPublisher
+│   ├── outbox/       ← OutboxEvent (persisted for async dispatch)
+│   └── exceptions/   ← DomainException hierarchy
+├── application/
+│   ├── ports/input/  ← InputPort interfaces with inner Command records, organized by domain subdirectory
+│   ├── ports/output/ ← RepositoryPort and service port interfaces
+│   ├── usecases/     ← Plain-Java use case implementations, organized by domain subdirectory
+│   ├── concurrency/  ← ParallelExecutor
+│   └── metrics/      ← Metrics port interfaces (e.g., DriverAssignmentMetricsPort)
 ├── infrastructure/   ← Spring, JPA, Keycloak, Micrometer, messaging
-└── presentation/     ← REST controllers, DTOs, mappers
+│   ├── config/       ← All @Configuration classes. UseCaseConfiguration.java wires all use-case beans.
+│   │                    BeanConfiguration.java is currently a stub — do NOT add beans there.
+│   ├── persistence/
+│   │   ├── adapters/ ← JPA repository adapters (implement output ports, annotated @Component)
+│   │   ├── entities/ ← JPA @Entity classes
+│   │   ├── mappers/  ← MapStruct JPA↔Domain mappers
+│   │   ├── converters/ ← AttributeConverter for value objects
+│   │   └── fare/     ← Fare-specific persistence (adapter, mapper, Spring Data repo)
+│   ├── adapters/     ← External service adapters (Keycloak provisioning)
+│   ├── security/     ← SecurityConfiguration, JWT converter, CurrentUser adapter
+│   ├── messaging/    ← OutboxEventProcessor (async dispatch)
+│   ├── observability/← Micrometer telemetry adapters
+│   └── web/filters/  ← TenantResolverFilter
+└── presentation/
+    ├── controllers/        ← Standard REST controllers (one per domain)
+    ├── controllers/admin/  ← Admin-only endpoints (SuperAdminController, FareConfigurationController)
+    ├── dto/                ← Request/Response DTOs (organized by request/, response/, approval/, common/)
+    ├── mappers/            ← Domain↔DTO MapStruct mappers
+    └── exception/          ← GlobalExceptionHandler → ErrorResponse
 ```
 
 **Dependency direction is inward only.** Infrastructure → Application → Domain. Domain knows nothing outside itself. This is enforced by 24 ArchUnit rules in `HexagonalArchitectureTest` — violations fail the build.
@@ -112,7 +141,18 @@ Security is unified in `SecurityConfiguration.java`. Behavior is toggled via pro
 
 ### Domain Events & Outbox Pattern
 
-Domain entities emit events via `DomainEventsCollector.collect(event)`. Events are persisted to `outbox_event` table in the same transaction, then `OutboxEventProcessor` dispatches them asynchronously (every 1 second, batch of 50, up to 5 retries). Key classes: `DomainEvent`, `OutboxPublisher`, `EventDispatcherPort`, `OutboxEventProcessor`.
+There are two event mechanisms — do not confuse them:
+
+| Mechanism | Class | When to use |
+|---|---|---|
+| Synchronous in-process | `DomainEventPublisher` (ThreadLocal, observer pattern) | Immediate reactions within the same request |
+| Async reliable dispatch | `DomainEventsCollector` → Outbox → `OutboxEventProcessor` | Cross-aggregate side-effects that must survive failures |
+
+For the Outbox path: domain entities emit events via `DomainEventsCollector.collect(event)`. Events are persisted to `outbox_event` table in the same transaction, then `OutboxEventProcessor` dispatches them asynchronously (every 1 second, batch of 50, up to 5 retries). Key classes: `DomainEvent`, `OutboxPublisher`, `EventDispatcherPort`, `OutboxEventProcessor`.
+
+### Driver Approval Workflow
+
+New drivers go through a multi-step approval process: `DriverApproval` is a separate domain entity (not part of `Driver`) with its own lifecycle. Use cases live in `application/usecases/approval/`. Admin endpoints are in `presentation/controllers/ApprovalController.java`. The workflow emits `DriverApprovalSubmittedEvent`, `DriverApprovedEvent`, and `DriverRejectedEvent`.
 
 ### Parallel Execution
 
