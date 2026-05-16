@@ -51,3 +51,16 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.hibernate.orm.jdbc.bind: TRACE
     com.zaxxer.hikari: DEBUG
+
+# Dev - Twilio Test Credentials
+twilio:
+  account-sid: ACtest
+  auth-token: test_token
+  verify:
+    service-sid: VAtest
+
+# Dev - Phone Token JWT
+rappidrive:
+  auth:
+    phone-token:
+      secret: dev-secret-key-32-chars-minimum!!

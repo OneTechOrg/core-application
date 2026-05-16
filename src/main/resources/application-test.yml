@@ -71,3 +71,16 @@ keycloak:
   admin:
     username: admin
     password: admin
+
+# Test - Twilio Test Credentials
+twilio:
+  account-sid: ACtest
+  auth-token: test_token
+  verify:
+    service-sid: VAtest
+
+# Test - Phone Token JWT
+rappidrive:
+  auth:
+    phone-token:
+      secret: test-secret-key-32-chars-minimum!

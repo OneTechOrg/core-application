@@ -114,3 +114,22 @@ keycloak:
   admin:
     username: ${KEYCLOAK_ADMIN_USERNAME:admin}
     password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+
+# Twilio Verify Service for OTP
+twilio:
+  account-sid: ${TWILIO_ACCOUNT_SID}
+  auth-token: ${TWILIO_AUTH_TOKEN}
+  verify:
+    service-sid: ${TWILIO_VERIFY_SERVICE_SID}
+
+# Phone Token JWT Configuration (HS256 - internal secret, not exposed to Keycloak)
+rappidrive:
+  auth:
+    phone-token:
+      secret: ${PHONE_TOKEN_SECRET}
+      ttl-seconds: 300
+    # Rate limiting for OTP requests (backend layer)
+    otp:
+      max-sends-per-window: 3
+      window-minutes: 10
+      max-registrations-per-hour-per-ip: 10
