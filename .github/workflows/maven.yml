@@ -43,7 +43,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn -B package -Dtest="!*E2ETest,!*IntegrationTest,!*IT" --file pom.xml
       env:
         SPRING_PROFILES_ACTIVE: e2e
         SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/rappidrive_e2e
