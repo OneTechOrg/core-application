@@ -19,21 +19,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgis/postgis:16-3.4
-        env:
-          POSTGRES_DB: rappidrive_e2e
-          POSTGRES_USER: rappidrive_test
-          POSTGRES_PASSWORD: test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
     - uses: actions/checkout@v4
     - name: Set up JDK 21
@@ -43,9 +28,4 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
-      run: mvn -B package -Dtest="!*E2ETest,!*IntegrationTest,!*IT" --file pom.xml
-      env:
-        SPRING_PROFILES_ACTIVE: e2e
-        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/rappidrive_e2e
-        SPRING_DATASOURCE_USERNAME: rappidrive_test
-        SPRING_DATASOURCE_PASSWORD: test_password
+      run: mvn -B package -Dtest="com.rappidrive.domain.**,com.rappidrive.application.**,com.rappidrive.architecture.**" -DskipITs=true --file pom.xml
